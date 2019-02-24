@@ -1,0 +1,519 @@
+import sys
+from PyQt4 import QtGui, QtCore
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
+
+drone_list = []
+ready_drones = []
+flight_list = []
+assigned_drones = [[],[],[],[],[],[],[]]
+
+class drone_window(QtGui.QMainWindow):
+    def __init__(self, parent=None):
+        super(drone_window, self).__init__(parent)
+        #vbox = QVBoxLayout()
+        self.resize(320,160)
+
+        self.setWindowTitle("Add/Remove Drones")
+
+        self.label_drones = QtGui.QLabel(self)
+        self.label_drones.setText("Enter a drone id:")
+        self.label_drones.move(20, 0)
+        self.label_drones.resize(180, 20)
+
+        self.textbox_drones = QLineEdit(self)
+        self.textbox_drones.resize(280, 40)
+        self.textbox_drones.move(20, 30)
+
+        self.button_add = QPushButton('Add Drone', self)
+        self.button_add.move(20, 80)
+        
+        self.button_remove = QPushButton('Remove Drone', self)
+        self.button_remove.move(200, 80)
+        
+        self.button_goto_flight = QPushButton('Next', self)
+        self.button_goto_flight.move(200, 120)
+
+        self.button_add.clicked.connect(self.add_drone_click) 
+
+        self.button_remove.clicked.connect(self.remove_drone_click)
+
+        self.button_goto_flight.clicked.connect(self.goto_flight)
+        self.fp_window = flight_window(self)
+
+    def add_drone_click(self):
+        global drone_list
+        curr_drone = self.textbox_drones.text()
+        if(curr_drone == ""):
+            return
+        if(curr_drone in drone_list):
+            print "Drone already added"
+        elif(len(drone_list) < 7):
+            drone_list.append(curr_drone)
+            display_list(drone_list)
+        else:
+            print "Max number of drones set"
+        self.textbox_drones.setText("")
+            
+    def remove_drone_click(self):
+        global drone_list
+        curr_drone = self.textbox_drones.text()
+        if(curr_drone == ""):
+            return
+        if(curr_drone in drone_list):
+            drone_list.remove(curr_drone)
+            print "removed drone: " + curr_drone
+        else:
+            print "Drone not connected"
+        display_list(drone_list)
+        self.textbox_drones.setText("")
+        
+    def goto_flight(self):
+        self.fp_window.show()
+
+class flight_window(QtGui.QMainWindow):
+    def __init__(self, parent=None):
+        super(flight_window, self).__init__(parent)
+        self.resize(320, 160)
+        self.setWindowTitle("Add/Remove Flight Path")
+
+        self.label_fp = QLabel(self)
+        self.label_fp.setText("Enter a flight path:")
+        self.label_fp.move(20, 0)
+        self.label_fp.resize(180, 20)
+
+        self.textbox_fp = QLineEdit(self)
+        self.textbox_fp.resize(280, 40)
+        self.textbox_fp.move(20, 30)
+
+        self.button_add = QPushButton('Add Flight Path', self)
+        self.button_add.move(20, 80)
+        
+        self.button_remove = QPushButton('Remove Flight Path', self)
+        self.button_remove.move(200, 80)
+        
+        self.button_goto_connect = QPushButton('Next', self)
+        self.button_goto_connect.move(200, 120)
+
+        self.button_add.clicked.connect(self.add_fp_click) 
+
+        self.button_remove.clicked.connect(self.remove_fp_click)
+
+        self.button_goto_connect.clicked.connect(self.goto_connect)
+        self.c_window = ""
+
+    def add_fp_click(self):
+        global flight_list
+        curr_flight = self.textbox_fp.text()
+        if(curr_flight == ""):
+            return
+        if(curr_flight in flight_list):
+            print "Flight already added"
+        elif(len(flight_list) < 7):
+            flight_list.append(curr_flight)
+            display_list(flight_list)
+        else:
+            print "Max number of flights set"
+        self.textbox_fp.setText("")
+
+    def remove_fp_click(self):
+        global flight_list
+        curr_flight = self.textbox_fp.text()
+        if(curr_flight == ""):
+            return
+        if(curr_flight in flight_list):
+            flight_list.remove(curr_flight)
+            print "Removed flight path: " + curr_flight
+        else:
+            print "Flight not connected"
+        display_list(flight_list)
+        self.textbox_fp.setText("")
+
+    def goto_connect(self):
+        self.c_window = connect_window(self)
+        self.c_window.show()
+
+class connect_window(QtGui.QMainWindow):
+    def __init__(self, parent=None):
+        global flight_list
+        global drone_list
+        global ready_drones
+        super(connect_window, self).__init__(parent)
+        ready_drones = drone_list[0:]
+        flight_len = len(flight_list)
+        
+        self.resize(320, 80)
+        self.setWindowTitle("Connect Drones to Flights")
+
+        self.label_title = QtGui.QLabel(self)
+        self.label_title.setText("Add/Remove drones for each flight path")
+        self.label_title.resize(300,20)
+        self.label_title.move(20,10)
+        self.label_warning = QtGui.QLabel(self)
+        self.label_warning.setText("No Flights are Connected")
+        self.label_warning.resize(300,20)
+        self.label_warning.move(20,30)
+
+        self.button_next = QtGui.QPushButton('next', self)
+        self.button_next.move(210, 40)
+        
+        if(flight_len > 0):
+            self.resize(320, 110)
+            self.label1 = QtGui.QLabel(self)
+            self.label1.setText("flight "+flight_list[0])
+            self.label1.move(120, 40)
+            self.rem_f1 = QPushButton('Remove',self)
+            self.rem_f1.move(10, 40)
+            self.add_f1 = QPushButton('Add',self)
+            self.add_f1.move(180, 40)
+            self.num_f1 = QtGui.QLabel(self)
+            self.num_f1.setText("[0]")
+            self.num_f1.move(290, 40)
+            self.label_warning.setText("")
+            self.label_warning.move(20,90)
+            self.rem_f1.clicked.connect(self.c_rem_f1)
+            self.add_f1.clicked.connect(self.c_add_f1)
+            self.button_next.move(210, 80)
+
+        if(flight_len > 1):
+            self.resize(320, 150)
+            self.label2 = QtGui.QLabel(self)
+            self.label2.setText("flight "+flight_list[1])
+            self.label2.move(120, 80)
+            self.rem_f2 = QPushButton('Remove',self)
+            self.rem_f2.move(10, 80)
+            self.add_f2 = QPushButton('Add',self)
+            self.add_f2.move(180, 80)
+            self.num_f2 = QtGui.QLabel(self)
+            self.num_f2.setText("[0]")
+            self.num_f2.move(290, 80)
+            self.label_warning.setText("")
+            self.label_warning.move(20,130)
+            self.rem_f2.clicked.connect(self.c_rem_f2)
+            self.add_f2.clicked.connect(self.c_add_f2)
+            self.button_next.move(210, 120)
+
+        if(flight_len > 2):
+            self.resize(320, 190)
+            self.label3 = QtGui.QLabel(self)
+            self.label3.setText("flight "+flight_list[2])
+            self.label3.move(120, 120)
+            self.rem_f3 = QPushButton('Remove',self)
+            self.rem_f3.move(10, 120)
+            self.add_f3 = QPushButton('Add',self)
+            self.add_f3.move(180, 120)
+            self.num_f3 = QtGui.QLabel(self)
+            self.num_f3.setText("[0]")
+            self.num_f3.move(290, 120)
+            self.label_warning.setText("")
+            self.label_warning.move(20,170)
+            self.rem_f3.clicked.connect(self.c_rem_f3)
+            self.add_f3.clicked.connect(self.c_add_f3)
+            self.button_next.move(210, 160)
+
+        if(flight_len > 3):
+            self.resize(320, 230)
+            self.label4 = QtGui.QLabel(self)
+            self.label4.setText("flight "+flight_list[3])
+            self.label4.move(120, 160)
+            self.rem_f4 = QPushButton('Remove',self)
+            self.rem_f4.move(10, 160)
+            self.add_f4 = QPushButton('Add',self)
+            self.add_f4.move(180, 160)
+            self.num_f4 = QtGui.QLabel(self)
+            self.num_f4.setText("[0]")
+            self.num_f4.move(290, 160)
+            self.label_warning.setText("")
+            self.label_warning.move(20,210)
+            self.rem_f4.clicked.connect(self.c_rem_f4)
+            self.add_f4.clicked.connect(self.c_add_f4)
+            self.button_next.move(210, 200)
+
+        if(flight_len > 4):
+            self.resize(320, 270)
+            self.label5 = QtGui.QLabel(self)
+            self.label5.setText("flight "+flight_list[4])
+            self.label5.move(120, 200)
+            self.rem_f5 = QPushButton('Remove',self)
+            self.rem_f5.move(10, 200)
+            self.add_f5 = QPushButton('Add',self)
+            self.add_f5.move(180, 200)
+            self.num_f5 = QtGui.QLabel(self)
+            self.num_f5.setText("[0]")
+            self.num_f5.move(290, 200)
+            self.label_warning.setText("")
+            self.label_warning.move(20,250)
+            self.rem_f5.clicked.connect(self.c_rem_f5)
+            self.add_f5.clicked.connect(self.c_add_f5)
+            self.button_next.move(210, 240)
+
+        if(flight_len > 5):
+            self.resize(320, 310)
+            self.label6 = QtGui.QLabel(self)
+            self.label6.setText("flight "+flight_list[5])
+            self.label6.move(120, 240)
+            self.rem_f6 = QPushButton('Remove',self)
+            self.rem_f6.move(10, 240)
+            self.add_f6 = QPushButton('Add',self)
+            self.add_f6.move(180, 240)
+            self.num_f6 = QtGui.QLabel(self)
+            self.num_f6.setText("[0]")
+            self.num_f6.move(290, 240)
+            self.label_warning.setText("")
+            self.label_warning.move(20,290)
+            self.rem_f6.clicked.connect(self.c_rem_f6)
+            self.add_f6.clicked.connect(self.c_add_f6)
+            self.button_next.move(210, 280)
+
+        if(flight_len > 6):
+            self.resize(320, 350)
+            self.label7 = QtGui.QLabel(self)
+            self.label7.setText("flight "+flight_list[6])
+            self.label7.move(120, 280)
+            self.rem_f7 = QPushButton('Remove',self)
+            self.rem_f7.move(10, 280)
+            self.add_f7 = QPushButton('Add',self)
+            self.add_f7.move(180, 280)
+            self.num_f7 = QtGui.QLabel(self)
+            self.num_f7.setText("[0]")
+            self.num_f7.move(290, 280)
+            self.label_warning.setText("")
+            self.label_warning.move(20,330)
+            self.rem_f7.clicked.connect(self.c_rem_f7)
+            self.add_f7.clicked.connect(self.c_add_f7)
+            self.button_next.move(210, 320)
+
+        self.button_next.clicked.connect(self.c_goto_coords)
+        self.cd_window = ""
+
+    def c_add_f1(self):
+        global ready_drones
+        global assigned_drones
+        if(len(ready_drones) != 0):
+            assigned_drones[0].append(ready_drones.pop())
+            self.num_f1.setText("["+str(len(assigned_drones[0]))+"]")
+            print "ready_drones:"
+            display_list(ready_drones)
+            print "assigned_drones 1:"
+            display_list(assigned_drones[0])
+        else:
+            self.label_warning.setText("No Drones Available")
+
+    def c_add_f2(self):
+        global ready_drones
+        global assigned_drones
+        if(len(ready_drones) != 0):
+            assigned_drones[1].append(ready_drones.pop())
+            self.num_f2.setText("["+str(len(assigned_drones[1]))+"]")
+            print "ready_drones:"
+            display_list(ready_drones)
+            print "assigned_drones 2:"
+            display_list(assigned_drones[1])
+        else:
+            self.label_warning.setText("No Drones Available")
+    
+    def c_add_f3(self):
+        global ready_drones
+        global assigned_drones
+        if(len(ready_drones) != 0):
+            assigned_drones[2].append(ready_drones.pop())
+            self.num_f3.setText("["+str(len(assigned_drones[2]))+"]")
+            print "ready_drones:"
+            display_list(ready_drones)
+            print "assigned_drones 3:"
+            display_list(assigned_drones[2])
+        else:
+            self.label_warning.setText("No Drones Available")
+
+
+    def c_add_f4(self):
+        global ready_drones
+        global assigned_drones
+        if(len(ready_drones) != 0):
+            assigned_drones[3].append(ready_drones.pop())
+            self.num_f4.setText("["+str(len(assigned_drones[3]))+"]")
+            print "ready_drones:"
+            display_list(ready_drones)
+            print "assigned_drones 4:"
+            display_list(assigned_drones[3])
+        else:
+            self.label_warning.setText("No Drones Available")
+
+
+    def c_add_f5(self):
+        global ready_drones
+        global assigned_drones
+        if(len(ready_drones) != 0):
+            assigned_drones[4].append(ready_drones.pop())
+            self.num_f5.setText("["+str(len(assigned_drones[4]))+"]")
+            print "ready_drones:"
+            display_list(ready_drones)
+            print "assigned_drones 5:"
+            display_list(assigned_drones[4])
+        else:
+            self.label_warning.setText("No Drones Available")
+
+
+    def c_add_f6(self):
+        global ready_drones
+        global assigned_drones
+        if(len(ready_drones) != 0):
+            assigned_drones[5].append(ready_drones.pop())
+            self.num_f6.setText("["+str(len(assigned_drones[5]))+"]")
+            print "ready_drones:"
+            display_list(ready_drones)
+            print "assigned_drones 6:"
+            display_list(assigned_drones[5])
+        else:
+            self.label_warning.setText("No Drones Available")
+
+
+    def c_add_f7(self):
+        global ready_drones
+        global assigned_drones
+        if(len(ready_drones) != 0):
+            assigned_drones[6].append(ready_drones.pop())
+            self.num_f7.setText("["+str(len(assigned_drones[6]))+"]")
+            print "ready_drones:"
+            display_list(ready_drones)
+            print "assigned_drones 7:"
+            display_list(assigned_drones[6])
+        else:
+            self.label_warning.setText("No Drones Available")
+
+
+    def c_rem_f1(self):
+        global ready_drones
+        global assigned_drones
+        if(len(assigned_drones[0]) > 0):
+            ready_drones.append(assigned_drones[0].pop())
+            self.num_f1.setText("["+str(len(assigned_drones[0]))+"]")
+            print "ready_drones:"
+            display_list(ready_drones)
+            print "assigned_drones 1:"
+            display_list(assigned_drones[0])
+        else:
+            self.label_warning.setText("No Drones Connected")
+    
+
+    def c_rem_f2(self):
+        global ready_drones
+        global assigned_drones
+        if(len(assigned_drones[1]) > 0):
+            ready_drones.append(assigned_drones[1].pop())
+            self.num_f2.setText("["+str(len(assigned_drones[1]))+"]")
+            print "ready_drones:"
+            display_list(ready_drones)
+            print "assigned_drones 2:"
+            display_list(assigned_drones[1])
+        else:
+            self.label_warning.setText("No Drones Connected")
+
+    def c_rem_f3(self):
+        global ready_drones
+        global assigned_drones
+        if(len(assigned_drones[2]) > 0):
+            ready_drones.append(assigned_drones[2].pop())
+            self.num_f3.setText("["+str(len(assigned_drones[2]))+"]")
+            print "ready_drones:"
+            display_list(ready_drones)
+            print "assigned_drones 3:"
+            display_list(assigned_drones[2])
+        else:
+            self.label_warning.setText("No Drones Connected")
+
+    def c_rem_f4(self):
+        global ready_drones
+        global assigned_drones
+        if(len(assigned_drones[3]) > 0):
+            ready_drones.append(assigned_drones[3].pop())
+            self.num_f4.setText("["+str(len(assigned_drones[3]))+"]")
+            print "ready_drones:"
+            display_list(ready_drones)
+            print "assigned_drones 4:"
+            display_list(assigned_drones[3])
+        else:
+            self.label_warning.setText("No Drones Connected")
+
+    def c_rem_f5(self):
+        global ready_drones
+        global assigned_drones
+        if(len(assigned_drones[4]) > 0):
+            ready_drones.append(assigned_drones[4].pop())
+            self.num_f5.setText("["+str(len(assigned_drones[4]))+"]")
+            print "ready_drones:"
+            display_list(ready_drones)
+            print "assigned_drones 5:"
+            display_list(assigned_drones[4])
+        else:
+            self.label_warning.setText("No Drones Connected")
+
+    def c_rem_f6(self):
+        global ready_drones
+        global assigned_drones
+        if(len(assigned_drones[5]) > 0):
+            ready_drones.append(assigned_drones[5].pop())
+            self.num_f6.setText("["+str(len(assigned_drones[5]))+"]")
+            print "ready_drones:"
+            display_list(ready_drones)
+            print "assigned_drones 6:"
+            display_list(assigned_drones[5])
+        else:
+            self.label_warning.setText("No Drones Connected")
+
+    def c_rem_f7(self):
+        global ready_drones
+        global assigned_drones
+        if(len(assigned_drones[6]) > 0):
+            ready_drones.append(assigned_drones[6].pop())
+            self.num_f7.setText("["+str(len(assigned_drones[6]))+"]")
+            print "ready_drones:"
+            display_list(ready_drones)
+            print "assigned_drones 7:"
+            display_list(assigned_drones[6])
+        else:
+            self.label_warning.setText("No Drones Connected")
+
+    def c_goto_coords(self):
+        self.c_window = coord_window(self)
+        self.c_window.show()
+
+class coord_window(QtGui.QMainWindow):
+    def __init__(self, parent=None):
+        global ready_drones
+        super(coord_window, self).__init__(parent)
+        drone_len = len(ready_drones)
+
+        self.resize(320,80)
+        self.setWindowTitle("Add Coordinates")
+        self.label_title = QtGui.QLabel(self)
+        self.label_title.setText("Add/Remove Drone Coordinates")
+        self.label_title.resize(300,20)
+        self.label_title.move(20,10)
+        self.label_warning.setText("No remaining drones")
+        self.label_warning.resize(300,20)
+        self.label_warning.move(20,30)
+        self.button_next = QtGui.QPushButton('next', self)
+        self.button_next.move(210,40)
+
+        if(drone_len > 0):
+            self.resize(320, 115)
+            self.label1 = QtGui.QLabel(self)
+            self.label1.setText("Drone "+ready_drones[0])
+        
+def main():
+    app = QtGui.QApplication(sys.argv)
+    start = drone_window()
+    start.show()
+    sys.exit(app.exec_())
+
+def display_list(list):
+    i = 0
+    display = ""
+    while i < len(list):
+        display += list[i] + " "
+        i += 1
+    print display
+    
+if __name__ == "__main__":
+    main()

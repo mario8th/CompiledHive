@@ -1,0 +1,32 @@
+
+label_drones = QLabel()
+label_drones.setText("Enter a drone id:")
+label_drones.setAlignment(Qt.AlignLeft)
+
+textbox_drones = QLineEdit(w)
+textbox_drones.resize(280,40)
+textbox_drones.setAlignment(Qt.AlignCenter)
+
+button_add = QPushButton('Add Drone', w)
+
+button_remove = QPushButton('Remove Drone', w)
+
+button_goto_flight = QPushButton('Next', w)
+    
+vbox.addWidget(label_drones)
+vbox.addWidget(textbox_drones)
+vbox.addWidget(button_add)
+vbox.addWidget(button_remove)
+vbox.addWidget(button_goto_flight)
+    
+button_add.clicked.connect(add_drone_click) 
+
+button_remove.clicked.connect(remove_drone_click)
+
+button_goto_flight.clicked.connect(goto_flight)
+    
+w.setLayout(vbox)
+
+w.show()
+
+sys.exit(a.exec_())
