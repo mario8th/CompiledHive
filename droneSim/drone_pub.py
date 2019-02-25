@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 #------------ Publisher Node -------------#
-#### To run: "rosrun my_new_topic drone_topic.py"
+#### To run: "rosrun my_new_topic drone_pub.py"
 ## open new shell: 'rostopic list' -> '/my_new_topic' should be shown
 ####### THIS WILL RUN ROS: 'rostopic echo /my_new_topic'
 # Pointing to the interpreter to use
@@ -37,3 +37,15 @@ while not rospy.is_shutdown():
     pose_msg.position.y += 1
     pose_msg.position.z += 1
     # This loop will continue until ctrl-c
+
+#----------- Subscriber Node ------------#
+# Will recieve and display data from the publisher node
+# This will be a separate file
+
+# If we want to launch the publisher and subscriber:
+# ---- In a .launch file:
+#
+# <launch>
+# <node name = "drone_pub" pkg = "my_new_topic" type = "drone_pub.py" output = "screen" />
+# <node name = "drone_sub" pkg = "my_new_topic" type = "drone_sub.py" output = "screen" />
+# </launch>
