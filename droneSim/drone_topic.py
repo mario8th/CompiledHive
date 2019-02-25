@@ -1,5 +1,6 @@
-#! /Desktop/capstoneRos python
+#! /usr/bin/env python
 
+#------------ Publisher Node -------------#
 #### To run: "rosrun my_new_topic drone_topic.py"
 ## open new shell: 'rostopic list' -> '/my_new_topic' should be shown
 ####### THIS WILL RUN ROS: 'rostopic echo /my_new_topic'
@@ -31,8 +32,8 @@ rate = rospy.Rate(30)
 while not rospy.is_shutdown():
     my_pub.publish(pose_msg)
     rate.sleep()
-    # increment positions by one *for testing*
+    # increment positions by one **for testing**
     pose_msg.position.x += 1
     pose_msg.position.y += 1
     pose_msg.position.z += 1
-    # This loop will continue because condition is never true
+    # This loop will continue until ctrl-c
