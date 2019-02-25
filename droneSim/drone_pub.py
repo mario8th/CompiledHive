@@ -23,6 +23,11 @@ pose_msg = Pose()
 pose_msg.position.x = 0
 pose_msg.position.y = 0
 pose_msg.position.z = 0
+pose_msg.orienation.x = 0
+pose_msg.orienation.y = 0
+pose_msg.orienation.z = 0
+pose_msg.orienation.w = 0
+
 
 
 # We will go through the loop 30 times per second
