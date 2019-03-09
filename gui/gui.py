@@ -766,6 +766,20 @@ class toggle_log_window(QtGui.QMainWindow):
       config.close()
       return
 
+class Monitor(QMainWindow):
+    def __init__(self, parent = None):
+        # Set up window for console
+        super(Monitor, self).__init__(parent)
+        self.resize(420, 220)
+
+        # Set text window params
+        self.notifs = QPlainTextEdit(self)
+        self.notifs.move(10, 10)
+        self.notifs.resize(400, 200)   
+
+        self.notifs.setReadOnly(True)
+        self.notifs.appendPlainText("text1")
+        self.notifs.appendPlainText("text3\n")
 
 def main():
     app = QtGui.QApplication(sys.argv)
