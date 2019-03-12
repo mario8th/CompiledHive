@@ -6,15 +6,13 @@ from PyQt4.QtGui import *
 class MainWindow(QMainWindow):
    count = 0
    def get_data(self):
-      return (self.drones_connected, self.fp_connected, self.drone_coords)
+      return (self.drones_connected, self.fp_connected, self.drone_coords, self.object_dict)
 	
    def __init__(self, parent = None):
       super(MainWindow, self).__init__(parent)
       self.resize(1000,800)
       self.setWindowTitle("CrazySwarm Flight Path Stuff")
 
-      self.file_names = "flights.txt"
-      
       self.drones_connected = []
       self.drones_available = []
       self.fp_connected = {}
@@ -101,81 +99,31 @@ class MainWindow(QMainWindow):
 
    def fp_select(self):
       self.label_fps = QLabel(self)
-      self.label_fps.setText("Select a flight path:")
+      self.label_fps.setText("Enter a flight path:")
       self.label_fps.move(20, 150)
       self.label_fps.resize(180, 20)
 
-      #self.textbox_fps = QLine(self)
-      #self.textbox_fps.resize(280, 40)
-      #self.textbox_fps.move(20, 170)
-      self.combo_fps = QtGui.QComboBox(self)
-      self.combo_fps.move(20, 170)
-      
-      self.fps_add = QPushButton('Upload', self)
+      self.textbox_fps = QLineEdit(self)
+      self.textbox_fps.resize(280, 40)
+      self.textbox_fps.move(20, 170)
+
+      self.fps_add = QPushButton('Add Flight Path', self)
       self.fps_add.move(20, 220)
       self.fps_add.clicked.connect(self.add_fp_click)
-      
-      self.fps_remove = QPushButton('Remove', self)
+        
+      self.fps_remove = QPushButton('Remove Flight Path', self)
       self.fps_remove.move(200, 220)
       self.fps_remove.clicked.connect(self.rem_fp_click)
 
    def add_fp_click(self):
-      self.current_file = QtGui.QFileDialog.getOpenFileName(self, 'Open File')
-      #if self.check_for_file(self.current_file) == False:
-      temp = self.get_file_name(self.current_file)
-      try:
-         #check file is python file
-         temp = temp.remove(".py")
-      except (Exception) as error:
-         message = ("File must be python file "+ str(error) )
-         print(message)
-      else:
-         self.combo_fps.addItem(temp)
-         self.combo_fp_cdtfp.addItem(temp)
-         temp = str(temp)
-         self.fp_connected[temp] = []
-         file = open(self.file_names, 'a')
-         file.write(" "+temp)
-         file.close()
-         self.create_file(temp)
+      curr_fp = str(self.textbox_fps.text())
+      if curr_fp not in self.fp_connected:
+         self.fp_connected[curr_fp] = []
+         self.combo_fp_cdtfp.addItem(curr_fp)
+      self.textbox_fps.setText("")
       return
-
-   def check_for_file(self,my_file):
-       for count in range(self.combo_fps.count()):
-          if self.comboBox.itemText(count) == my_file:
-              return True
-          else:
-              return False
-
-   def create_file(self, a_file):
-        with open(self.current_file) as file_in:
-            with open(a_file + ".py", "w") as file_out:
-                for line in file_in:
-                   file_out.write(line)
-        return
-      
-   def get_file_name(self, a_file):
-        temp = a_file
-        if temp.contains("/") == True:
-            temp = temp.section('/', -1)
-        print temp
-        return temp
    
    def rem_fp_click(self):
-      file = open(self.file_names, 'w+')
-      for line in file:
-        temp = line.split(" ")
-        for name in temp:
-           index = 0;
-           if name == self.current_file:
-               index += 1
-              #TO DO remove file from computer
-               self.combo_fps.removeItem(index)
-               file.write(" ")
-           else:
-               index += 1
-               file.write(name) 
-      file.close()
       return
 
    def connect_drone_to_fp(self):
@@ -818,6 +766,28 @@ class toggle_log_window(QtGui.QMainWindow):
       config.close()
       return
 
+class Monitor(QMainWindow):
+    def __init__(self, parent = None):
+        # Set up window for console
+        super(Monitor, self).__init__(parent)
+        self.resize(420, 250)
+
+        # Set text window params
+        self.notifs = QPlainTextEdit(self)
+        self.notifs.move(10, 10)
+        self.notifs.resize(400, 200)   
+
+        self.notifs.setReadOnly(True)
+        self.notifs.appendPlainText("text1")
+        self.notifs.appendPlainText("text3\n")
+
+        self.end_buttn = QPushButton("End Flight", self)
+        self.end_buttn.move(310, 215)
+        self.end_buttn.clicked.connect(self.end_flight)
+
+    def end_flight(self):
+        print("Starting to end the flight crapidoodle II: Electric Boogaloo")
+        # publish
 
 def main():
     app = QtGui.QApplication(sys.argv)
