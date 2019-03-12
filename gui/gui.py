@@ -6,6 +6,10 @@ from PyQt4.QtGui import *
 class MainWindow(QMainWindow):
    count = 0
    def get_data(self):
+      drone_count = 1.0
+      for drone in self.drone_coords:
+         self.drone_coords[drone] = [(drone_count, 0, 0)] + self.drone_coords[drone]
+         drone_count = round(drone_count + .3,2)
       return (self.drones_connected, self.fp_connected, self.drone_coords, self.object_dict)
 	
    def __init__(self, parent = None):
