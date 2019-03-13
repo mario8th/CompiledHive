@@ -119,7 +119,7 @@ class Siminfo:
 
 
 pub = rospy.Publisher('simtoback', String, queue_size=10)
-simdata = Siminfo(0.2)
+simdata = Siminfo(2)
 
 def callback(data):
 

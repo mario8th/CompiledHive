@@ -49,15 +49,11 @@ class BackendData:
     def dronesAtDest(self):
         dronesAtDest = 0
 
-        '''
-        print "currentLoc:"
         print(self.currentLoc)
-        print "currenDest:"
         print(self.currentDest)
-        '''
 
         # Assume snycbool is on, count numberr of drones at their destination
-        for dronecount, drone in enumerate(self.destList):
+        for dronecount, drone in enumerate(self.droneList):
             if(self.currentLoc[dronecount] == self.currentDest[dronecount]):
                 dronesAtDest += 1
 
@@ -78,15 +74,6 @@ class BackendData:
     #Updates current location of drones, whenever sim input is received
     def updateCurrentLoc(self, newLocs):
         self.currentLoc = newLocs
-        """
-        print("dronelist ", self.droneList)
-        print("destList  ", self.destList)
-        print("obstacles ", self.obstacles)
-        print("destIndexList ", self.destIndexList)
-        print("currentDest ", self.currentDest)
-        print("currentLoc ", self.currentLoc)
-        print("")
-        """
 
     # Activates wuit bool and sets all drones to land
     def activateQuitBool(self):
@@ -108,10 +95,14 @@ class BackendData:
         if(dronesAtDest == len(self.droneList)):
             #They are, update destlist
             for dronecount, drone in enumerate(self.destList):
-                newDests.append(self.destList[dronecount][self.destIndexList[dronecount] + 1])
+                try:
+                    newDests.append(self.destList[dronecount][self.destIndexList[dronecount] + 1])
+                except:
+                    newDests.append(self.destList[dronecount][-1])
                 self.destIndexList[dronecount] += 1
             self.currentDest = newDests
-            #publish new dests
+
+            #publish new dests to sim
             dest_pub.publish(str(newDests))
 
         # Do nothing otherwise
@@ -132,11 +123,8 @@ def receivedLocations(data):
 
     # Update drone locations in backend
     newLocs = ast.literal_eval(data.data)
-    #print(newLocs)
 
     backend.updateCurrentLoc(newLocs)
-
-
 
     # Check for Events
     eventString = backend.checkForEvents()
@@ -147,11 +135,12 @@ def receivedLocations(data):
         console_pub.publish(eventString)
 
     # Forward drone locations, publishing to vis
-    visualization_pub.publish()
+    forwardDroneLocs()
 
     #Check for quitbool, Only check for destinations if it hasnt been updated
     if(not backend.quitBool):
         backend.checkAtDest()
+
 
 #
 def receivedEStop(data):
