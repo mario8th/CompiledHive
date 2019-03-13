@@ -124,17 +124,13 @@ class MainWindow(QMainWindow):
       self.fps_remove.clicked.connect(self.rem_fp_click)
 
    def add_fp_click(self):
-      print "hewwo"
+      message = QMessageBox()
       self.current_file = QtGui.QFileDialog.getOpenFileName(self, 'Open File')
       #if self.check_for_file(self.current_file) == False:
       temp = self.get_file_name(self.current_file)
-      try:
+      if temp[-2:] == 'py':
          #check file is python file
          temp = temp.remove(".py")
-      except (Exception) as error:
-         message = ("File must be python file "+ str(error) )
-         print(message)
-      else:
          self.combo_fps.addItem(temp)
          self.combo_fp_cdtfp.addItem(temp)
          temp = str(temp)
@@ -143,6 +139,12 @@ class MainWindow(QMainWindow):
          file.write(" "+temp)
          file.close()
          self.create_file(temp)
+      else:
+         message.setText("File must be python file ")
+         message.setWindowTitle("Error")
+         
+         message.setStandardButtons(QMessageBox.Ok)
+         retval = message.exec_()
       return
 
    def check_for_file(self,my_file):
@@ -163,7 +165,6 @@ class MainWindow(QMainWindow):
         temp = a_file
         if temp.contains("/") == True:
             temp = temp.section('/', -1)
-        print temp
         return temp
 
    def rem_fp_click(self):
@@ -850,7 +851,11 @@ def main():
     app = QtGui.QApplication(sys.argv)
     start = MainWindow()
     start.show()
-    sys.exit(app.exec_())
+    app.exec_()
+
+    monitor = Monitor()
+    monitor.show()
+    app.exec_()
 
 if __name__ == "__main__":
     main()
