@@ -33,7 +33,7 @@
 #
 # Revision $Id$
 
-## Simple talker demo that listens to std_msgs/Strings published 
+## Simple talker demo that listens to std_msgs/Strings published
 ## to the 'chatter' topic
 
 import rospy
@@ -41,7 +41,7 @@ from std_msgs.msg import String
 import ast
 import math
 
-REFRESHRATE = 1
+REFRESHRATE = 2
 
 #Class to hold math info for simulator
 class Siminfo:
@@ -58,8 +58,6 @@ class Siminfo:
         else:
             self.dest = dronedata
             self.updatevectors()
-
-        
 
     def updatevectors(self):
         #Calculate unit vector in direction of dest
@@ -80,14 +78,15 @@ class Siminfo:
 
         self.vectors = tempvectors
 
+
     def update(self):
         movedistmax = self.speedmax/self.refreshrate
         newlocs = []
-        
+
         if(self.dest):
             for dronecount, drone in enumerate(self.currentlocs):
                 #Check if drone is within movedist of destination
-                
+
                 newvect = ([ self.dest[dronecount][0] - drone[0] ,self.dest[dronecount][1] - drone[1] ,self.dest[dronecount][2] - drone[2]])
 
 
@@ -97,7 +96,7 @@ class Siminfo:
 
                 lengthvect = math.sqrt(lengthvect)
 
-                
+
                 #it is, go to dest
 		# Small error added to prevent overshooting or extra steps due to inaccuracies in floating point ops
                 if(lengthvect <= movedistmax + 0.000000001):
@@ -109,28 +108,30 @@ class Siminfo:
                     tempvect[0] += self.vectors[dronecount][0]*movedistmax
                     tempvect[1] += self.vectors[dronecount][1]*movedistmax
                     tempvect[2] += self.vectors[dronecount][2]*movedistmax
-                    
+
                     newlocs.append(tempvect)
 
             #print("vect", self.vectors)
             #print("dest", self.dest)
             #print("curr", self.currentlocs)
-            
+
             self.currentlocs = newlocs
-                    
-            
+
+
 pub = rospy.Publisher('simtoback', String, queue_size=10)
-simdata = Siminfo(0.2)   
+simdata = Siminfo(0.2)
 
 def callback(data):
-    dronedata = ast.literal_eval(data.data)
-    
-    simdata.updatelocs(dronedata)
 
     print(data.data)
+    dronedata = ast.literal_eval(data.data)
+
+    simdata.updatelocs(dronedata)
 
 
-def listener():
+
+
+def simListener():
 
     # In ROS, nodes are uniquely named. If two nodes with the same
     # name are launched, the previous one is kicked off. The
@@ -140,7 +141,7 @@ def listener():
     rospy.init_node('listener', anonymous=True)
 
     rospy.Subscriber('backtosim', String, callback)
-    
+
     rate = rospy.Rate(REFRESHRATE)
     while not rospy.is_shutdown():
         simdata.update()
@@ -149,4 +150,4 @@ def listener():
 
 
 if __name__ == '__main__':
-    listener()
+    simListener()
