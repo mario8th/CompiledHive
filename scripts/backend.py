@@ -8,6 +8,7 @@ import random
 import rospy
 import ast
 from std_msgs.msg import String
+from gui import *
 
 backend = None
 visualization_pub = rospy.Publisher('backtomonitorvis', String, queue_size=10)
@@ -175,11 +176,33 @@ def runBackend(dronelist, dests, obstacles):
     rospy.spin()
 
 
+def launchGui():
+    app = QtGui.QApplication(sys.argv)
+    gui = MainWindow()
+    gui.show()
+    app.exec_()
 
+    return gui.get_data()
 
+def main():
+    flightData = launchGui()
+    droneList = []
+    coordList = []
+    objectDict = flightData[3]
+    droneCoords = flightData[2]
+    for drone in droneCoords:
+        droneList.append(drone)
+        coordList.append(droneCoords[drone])
+    print("coordList: ", coordList)
+    for listCount, clist in enumerate(coordList):
+        for tupleCount, tuple in enumerate(clist):
+            coordList[listCount][tupleCount] = list(tuple)
+    print("coordList: ", coordList)
+    runBackend(droneList, coordList, objectDict)
+    #runBackend([1,2], [[[-4.0,-4.0,5.0],[4.0,-4.0,5.0],[4.0,4.0,5.0],[-4.0,4.0,5.0]],[[2.0,-2.0,3.0],[-2.0,-2.0,3.0],[-2.0,2.0,3.0],[2.0,2.0,3.0]]], {})
 
-runBackend([1,2], [[[-4.0,-4.0,5.0],[4.0,-4.0,5.0],[4.0,4.0,5.0],[-4.0,4.0,5.0]],[[2.0,-2.0,3.0],[-2.0,-2.0,3.0],[-2.0,2.0,3.0],[2.0,2.0,3.0]]], {})
-
+if __name__ == "__main__":
+    main()
 
 
 
