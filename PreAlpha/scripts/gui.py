@@ -11,7 +11,7 @@ class MainWindow(QMainWindow):
          self.drone_coords[drone] = [(drone_count, 0, 0)] + self.drone_coords[drone]
          drone_count = round(drone_count + .3,2)
       return (self.drones_connected, self.fp_connected, self.drone_coords, self.object_dict)
-	
+
    def __init__(self, parent = None):
       super(MainWindow, self).__init__(parent)
       self.resize(1000,800)
@@ -23,7 +23,7 @@ class MainWindow(QMainWindow):
       self.drone_coords = {}
       self.object_dict = {}
       self.file_names = "flights.txt"
-      
+
       self.drone_select()
       self.fp_select()
       self.connect_drone_to_fp()
@@ -39,7 +39,7 @@ class MainWindow(QMainWindow):
       self.start_flight = QPushButton('Start Flight', self)
       self.start_flight.move(520, 400)
       self.start_flight.clicked.connect(self.start_flight_action)
-      
+
    def drone_select(self):
       self.label_ds = QtGui.QLabel(self)
       self.label_ds.setText("Enter a drone id:")
@@ -53,7 +53,7 @@ class MainWindow(QMainWindow):
       self.ds_add = QPushButton('Add Drone', self)
       self.ds_add.move(90, 55)
       self.ds_add.clicked.connect(self.add_drone_click)
-        
+
       self.ds_combo = QComboBox(self)
       self.ds_combo.move(20, 95)
       self.ds_combo.resize(60,40)
@@ -142,7 +142,7 @@ class MainWindow(QMainWindow):
       else:
          message.setText("File must be python file ")
          message.setWindowTitle("Error")
-         
+
          message.setStandardButtons(QMessageBox.Ok)
          retval = message.exec_()
       return
@@ -180,7 +180,7 @@ class MainWindow(QMainWindow):
                file.write(" ")
            else:
                index += 1
-               file.write(name) 
+               file.write(name)
       file.close()
       return
 
@@ -251,7 +251,7 @@ class MainWindow(QMainWindow):
          for drone in self.fp_connected[curr_fp]:
             self.cdtfp_rem_combo.addItem(drone)
       return
-   
+
    def coordinates(self):
       self.label_c_drone = QtGui.QLabel(self)
       self.label_c_drone.setText("Choose Drone:")
@@ -307,7 +307,7 @@ class MainWindow(QMainWindow):
          self.textbox_c_x.setText('')
          self.textbox_c_y.setText('')
          self.textbox_c_z.setText('')
-         
+
          try:
             x_coord = float(x_coord)
             y_coord = float(y_coord)
@@ -315,9 +315,9 @@ class MainWindow(QMainWindow):
          except:
             return
 
-         x_bool = x_coord >= 0 and x_coord <= 3.4
-         y_bool = y_coord >= 0 and y_coord <= 4.25
-         z_bool = z_coord >= 0 and z_coord <= 2.43
+         x_bool = x_coord >= -4 and x_coord <= 4
+         y_bool = y_coord >= -4 and y_coord <= 4
+         z_bool = z_coord >= 0 and z_coord <= 9
          if x_bool and y_bool and z_bool:
             coordinate = (x_coord, y_coord, z_coord)
             self.drone_coords[curr_drone].append(coordinate)
@@ -342,7 +342,7 @@ class MainWindow(QMainWindow):
          coordinate = '(' + str(coord[0]) + ',' + str(coord[1]) + ',' + str(coord[2]) + ')'
          self.combo_c_coord.addItem(coordinate)
       return
-   
+
    def objects(self):
       self.label_o_coord = QtGui.QLabel(self)
       self.label_o_coord.setText("Enter Corner Coordinates:")
@@ -425,7 +425,7 @@ class MainWindow(QMainWindow):
          self.textbox_o_y2.setText('')
          self.textbox_o_z1.setText('')
          self.textbox_o_z2.setText('')
-         
+
          try:
             x1_coord = float(x1_coord)
             x2_coord = float(x2_coord)
@@ -437,12 +437,12 @@ class MainWindow(QMainWindow):
          except:
             return
 
-         x1_bool = x1_coord >= 0 and x1_coord <= 3.4
-         y1_bool = y1_coord >= 0 and y1_coord <= 4.25
-         z1_bool = z1_coord >= 0 and z1_coord <= 2.43
-         x2_bool = x2_coord >= 0 and x2_coord <= 3.4
-         y2_bool = y2_coord >= 0 and y2_coord <= 4.25
-         z2_bool = z2_coord >= 0 and z2_coord <= 2.43
+         x1_bool = x1_coord >= -4 and x1_coord <= 4
+         y1_bool = y1_coord >= -4 and y1_coord <= 4
+         z1_bool = z1_coord >= 0 and z1_coord <= 8
+         x2_bool = x2_coord >= -4 and x2_coord <= 4
+         y2_bool = y2_coord >= -4 and y2_coord <= 4
+         z2_bool = z2_coord >= 0 and z2_coord <= 8
          if x1_bool and x2_bool and y1_bool and y2_bool and z1_bool and z2_bool:
             coord1 = (x1_coord, y1_coord, z1_coord)
             coord2 = (x2_coord, y2_coord, z2_coord)
@@ -456,7 +456,7 @@ class MainWindow(QMainWindow):
       self.combo_obj.removeItem(curr_index)
       self.object_dict.pop(curr_obj)
       return
-      
+
    def open_toggle_vis(self):
       self.toggle_vis_win = toggle_vis_window()
       self.toggle_vis_win.show()
@@ -468,13 +468,56 @@ class MainWindow(QMainWindow):
       return
 
    def start_flight_action(self):
-      print self.drones_connected
-      print self.drones_available
-      print self.fp_connected
-      print self.drone_coords
-      print self.object_dict
-      QCoreApplication.exit(0)
+      self.logInfo()
+      self.close()
+      #QCoreApplication.exit(0)
       return
+
+   # Logs all requested data input
+   def logInfo(self):
+       log = open("LogData.txt", 'w')
+       config = open("log_config.txt", 'r')
+       # Checks if log is on
+       line = config.readline().strip()
+       if line == "on":
+           # Checks if requested to save drones
+           line = config.readline().strip()
+           if line == "on":
+               log.write("Drones Connected:\n")
+               for drone in self.drones_connected:
+                   log.write(drone + ' ')
+               log.write('\n\n')
+           # Checks if requested to save drone locs
+           line = config.readline().strip()
+           # Checks for frequency of drone locs
+           line = config.readline().strip()
+           # Checks if requested to save objects
+           line = config.readline().strip()
+           if line == "on":
+               log.write("Objects and outer corners:\n")
+               for obj in self.object_dict:
+                   log.write(obj + ' ')
+                   log.write(str(self.object_dict[obj][0]) + ' ')
+                   log.write(str(self.object_dict[obj][1]) + '\n')
+               log.write('\n')
+           # Checks if requested to save flight Paths
+           line = config.readline().strip()
+           if line == "on":
+               log.write("Flight Paths and Connected Drones:\n")
+               for fp in self.fp_connected:
+                   log.write(fp + ': ')
+                   for drone in self.fp_connected[fp]:
+                       log.write(drone + ' ')
+                   log.write('\n')
+               log.write('\n')
+           # checks if requested to save drone coords
+           line = config.readline().strip()
+           if line == 'on':
+               log.write("Drones and connected coordinates:\n")
+               log.write(str(self.drone_coords))
+               log.write('\n')
+           # Checks if requested to save events
+           line = config.readline().strip()
 
 class toggle_vis_window(QtGui.QMainWindow):
    def __init__(self, parent=None):
@@ -484,7 +527,7 @@ class toggle_vis_window(QtGui.QMainWindow):
       self.main_label.setText('Toggle Elements Shown in Visualzation')
       self.main_label.resize(300, 20)
       self.setWindowTitle('Toggle Visualization')
-      
+
       self.vis_group = QButtonGroup()
       self.vis_on = QRadioButton('On', self)
       self.vis_on.move(20,20)
@@ -638,7 +681,7 @@ class toggle_log_window(QtGui.QMainWindow):
       self.main_label.setText('Toggle Elements Logged')
       self.main_label.resize(300, 20)
       self.setWindowTitle('Toggle Log File')
-      
+
       self.log_group = QButtonGroup()
       self.log_on = QRadioButton('On', self)
       self.log_on.move(20,20)
@@ -833,7 +876,7 @@ class Monitor(QMainWindow):
         # Set text window params
         self.notifs = QPlainTextEdit(self)
         self.notifs.move(10, 10)
-        self.notifs.resize(400, 200)   
+        self.notifs.resize(400, 200)
 
         self.notifs.setReadOnly(True)
         self.notifs.appendPlainText("text1")

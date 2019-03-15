@@ -21,6 +21,7 @@ class BackendData:
         self.droneList = dronelist
         self.destList = dests
         self.obstacles = obstacles
+        self.sensors = [[4.0,-4.0,0.0], [-4.0,-4.0,0.0], [4.0,4.0,0.0], [-4.0,4.0,0.0], [4.0,-4.0,8.0], [-4.0,-4.0,8.0], [4.0,4.0,8.0], [-4.0,4.0,8.0]]
 
         self.quitBool = False
 
@@ -67,10 +68,33 @@ class BackendData:
         return "No Events Yet"
 
     def checkObstacleCollide(self):
-        pass
+        errorFlag = False
+
+        for obstacle in self.obstacles:
+            for drone in self.currentLoc:
+                print "checking obstacle ",drone, self.obstacles[obstacle][0], self.obstacles[obstacle][1]
+                if(pointWithinRectangle(drone, self.obstacles[obstacle][0], self.obstacles[obstacle][1])):
+                    print(str(drone) + ' in obstacle ' + str(obstacle))
 
     def checkOutOfBounds(self):
-        pass
+        #Find 2 opposite Sensors
+        sensor1 = self.sensors[0]
+        sensor2 = self.sensors[-1]
+
+        for sensor in self.sensors:
+            if(sensor1[0] != sensor[0] and sensor1[1] != sensor[1] and sensor1[2] != sensor[2]):
+                sensor2 = sensor
+
+        # Feed each drone into pointWithinRectangle
+        errorFlag = False
+        for drone in self.currentLoc:
+            errorFlag = errorFlag or not pointWithinRectangle(drone, sensor1, sensor2)
+
+        # Drone was out of bounds
+        if(errorFlag):
+            self.activateQuitBool()
+            #Publish to console_pub about flight ending because a drone flew out of bounds
+            print "Drone flew out of bounds"
 
     #Updates current location of drones, whenever sim input is received
     def updateCurrentLoc(self, newLocs):
@@ -78,13 +102,16 @@ class BackendData:
 
     # Activates wuit bool and sets all drones to land
     def activateQuitBool(self):
+        global dest_pub
         self.quitBool = True
         # Update all destinations to fly straight down
         newDests = []
-        for drone in self.currentDest:
+        for drone in self.currentLoc:
             newDests.append([drone[0], drone[1], 0.0])
 
-        self.destList = newDests
+        self.currentDest = newDests
+        dest_pub.publish(str(newDests))
+
 
     # Checks which drones have reached dest and updates dests accordingly
     def checkAtDest(self):
@@ -110,6 +137,20 @@ class BackendData:
 
         #print newDests
 
+# Tests if point is within rectangle bounded by 2 opposite corners
+def pointWithinRectangle(point, corner1, corner2):
+    withinRect = True
+
+    print point, corner1, corner2
+
+    # Check X values within range
+    for xyzindex in range(3):
+        if((point[xyzindex] >= corner1[xyzindex] and point[xyzindex] <= corner2[xyzindex]) or (point[xyzindex] <= corner1[xyzindex] and point[xyzindex] >= corner2[xyzindex])):
+            pass
+        else:
+            withinRect = False
+
+    return withinRect
 
 # Forwards drone locations to vis
 def forwardDroneLocs():
@@ -198,8 +239,8 @@ def main():
         for tupleCount, tuple in enumerate(clist):
             coordList[listCount][tupleCount] = list(tuple)
     print("coordList: ", coordList)
-    #runBackend(droneList, coordList, objectDict)
-    runBackend([1,2], [[[-4.0,-4.0,5.0],[4.0,-4.0,5.0],[4.0,4.0,5.0],[-4.0,4.0,5.0]],[[2.0,-2.0,3.0],[-2.0,-2.0,3.0],[-2.0,2.0,3.0],[2.0,2.0,3.0]]], {})
+    runBackend(droneList, coordList, objectDict)
+    #runBackend([1,2], [[[-4.0,-4.0,5.0],[4.0,-4.0,5.0],[4.0,4.0,5.0],[-4.0,4.0,5.0]],[[2.0,-2.0,3.0],[-2.0,-2.0,3.0],[-2.0,2.0,3.0],[2.0,2.0,3.0]]], {})
 
 if __name__ == "__main__":
     main()
