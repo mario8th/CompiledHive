@@ -45,88 +45,88 @@ REFRESHRATE = 2
 
 #Class to hold math info for simulator
 class Siminfo:
-    def __init__(self, speedmax):
-        self.currentlocs = []
+    def __init__(self, speedMax):
+        self.currentLocs = []
         self.vectors = []
-        self.speedmax = speedmax
+        self.speedMax = speedMax
         self.dest = []
-        self.refreshrate = REFRESHRATE
+        self.refreshRate = REFRESHRATE
 
-    def updatelocs(self, dronedata):
-        if(self.currentlocs == []):
-            self.currentlocs = dronedata
+    def updateLocs(self, droneData):
+        if(self.currentLocs == []):
+            self.currentLocs = droneData
         else:
-            self.dest = dronedata
-            self.updatevectors()
+            self.dest = droneData
+            self.updateVectors()
 
-    def updatevectors(self):
+    def updateVectors(self):
         #Calculate unit vector in direction of dest
-        tempvectors = []
-        for dronecount, drone in enumerate(self.currentlocs):
-            newvect = ([ self.dest[dronecount][0] - drone[0] ,self.dest[dronecount][1] - drone[1] ,self.dest[dronecount][2] - drone[2]])
-            #Change newvect to unit vector
-            lengthvect = 0.0
-            for xyz in newvect:
-                lengthvect += xyz * xyz
+        tempVectors = []
+        for droneCount, drone in enumerate(self.currentLocs):
+            newVect = ([ self.dest[droneCount][0] - drone[0] ,self.dest[droneCount][1] - drone[1] ,self.dest[droneCount][2] - drone[2]])
+            #Change newVect to unit vector
+            lengthVect = 0.0
+            for xyz in newVect:
+                lengthVect += xyz * xyz
 
-            lengthvect = math.sqrt(lengthvect)
+            lengthVect = math.sqrt(lengthVect)
 
-            for xyzcount, xyz in enumerate(newvect):
-                newvect[xyzcount] = xyz/lengthvect
+            for xyzcount, xyz in enumerate(newVect):
+                newVect[xyzcount] = xyz/lengthVect
 
-            tempvectors.append(newvect)
+            tempVectors.append(newVect)
 
-        self.vectors = tempvectors
+        self.vectors = tempVectors
 
 
     def update(self):
-        movedistmax = self.speedmax/self.refreshrate
-        newlocs = []
+        moveDistMax = self.speedMax/self.refreshRate
+        newLocs = []
 
         if(self.dest):
-            for dronecount, drone in enumerate(self.currentlocs):
+            for droneCount, drone in enumerate(self.currentLocs):
                 #Check if drone is within movedist of destination
 
-                newvect = ([ self.dest[dronecount][0] - drone[0] ,self.dest[dronecount][1] - drone[1] ,self.dest[dronecount][2] - drone[2]])
+                newVect = ([ self.dest[droneCount][0] - drone[0] ,self.dest[droneCount][1] - drone[1] ,self.dest[droneCount][2] - drone[2]])
 
 
-                lengthvect = 0.0
-                for xyz in newvect:
-                    lengthvect += xyz * xyz
+                lengthVect = 0.0
+                for xyz in newVect:
+                    lengthVect += xyz * xyz
 
-                lengthvect = math.sqrt(lengthvect)
+                lengthVect = math.sqrt(lengthVect)
 
 
                 #it is, go to dest
 		# Small error added to prevent overshooting or extra steps due to inaccuracies in floating point ops
-                if(lengthvect <= movedistmax + 0.000000001):
-                    newlocs.append(self.dest[dronecount])
+                if(lengthVect <= moveDistMax + 0.000000001):
+                    newLocs.append(self.dest[droneCount])
 
                 #otherwise, add vector times movedist to currentloc
                 else:
                     tempvect = drone
-                    tempvect[0] += self.vectors[dronecount][0]*movedistmax
-                    tempvect[1] += self.vectors[dronecount][1]*movedistmax
-                    tempvect[2] += self.vectors[dronecount][2]*movedistmax
+                    tempvect[0] += self.vectors[droneCount][0]*moveDistMax
+                    tempvect[1] += self.vectors[droneCount][1]*moveDistMax
+                    tempvect[2] += self.vectors[droneCount][2]*moveDistMax
 
-                    newlocs.append(tempvect)
+                    newLocs.append(tempvect)
 
             #print("vect", self.vectors)
             #print("dest", self.dest)
-            #print("curr", self.currentlocs)
+            #print("curr", self.currentLocs)
 
-            self.currentlocs = newlocs
+            self.currentLocs = newLocs
 
 
 pub = rospy.Publisher('simtoback', String, queue_size=10)
-simdata = Siminfo(2)
+simData = Siminfo(2)
 
 def callback(data):
 
     print(data.data)
-    dronedata = ast.literal_eval(data.data)
+    droneData = ast.literal_eval(data.data)
 
-    simdata.updatelocs(dronedata)
+    simData.updateLocs(droneData)
 
 
 
@@ -144,8 +144,8 @@ def simListener():
 
     rate = rospy.Rate(REFRESHRATE)
     while not rospy.is_shutdown():
-        simdata.update()
-        pub.publish(str(simdata.currentlocs))
+        simData.update()
+        pub.publish(str(simData.currentLocs))
         rate.sleep()
 
 
