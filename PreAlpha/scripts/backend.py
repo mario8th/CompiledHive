@@ -11,14 +11,14 @@ from std_msgs.msg import String
 from gui import *
 
 backend = None
-visualization_pub = rospy.Publisher('backtomonitorvis', String, queue_size=10)
-console_pub = rospy.Publisher('backtomonitorconsole', String, queue_size=10)
-dest_pub = rospy.Publisher('backtosim', String, queue_size=10)
+visualizationPub = rospy.Publisher('backtomonitorvis', String, queue_size=10)
+consolePub = rospy.Publisher('backtomonitorconsole', String, queue_size=10)
+destPub = rospy.Publisher('backtosim', String, queue_size=10)
 
 class BackendData:
-    def __init__(self, dronelist, dests, obstacles):
+    def __init__(self, droneList, dests, obstacles):
         # Main local vars
-        self.droneList = dronelist
+        self.droneList = droneList
         self.destList = dests
         self.obstacles = obstacles
         self.sensors = [[4.0,-4.0,0.0], [-4.0,-4.0,0.0], [4.0,4.0,0.0], [-4.0,4.0,0.0], [4.0,-4.0,8.0], [-4.0,-4.0,8.0], [4.0,4.0,8.0], [-4.0,4.0,8.0]]
@@ -27,12 +27,12 @@ class BackendData:
 
         # Set up list of destination indices
         self.destIndexList = []
-        for drone in dronelist:
+        for drone in droneList:
             self.destIndexList.append(0)
 
         # Set up first destinations
         self.currentDest = []
-        for dronecount, drone in enumerate(self.destList):
+        for droneCount, drone in enumerate(self.destList):
             self.currentDest.append(drone[0])
 
         # Set up first locations
@@ -40,7 +40,7 @@ class BackendData:
         for drone in dests:
             self.currentLoc.append(drone[0])
 
-        print("dronelist ", self.droneList)
+        print("droneList ", self.droneList)
         print("destList  ", self.destList)
         print("obstacles ", self.obstacles)
         print("destIndexList ", self.destIndexList)
@@ -55,8 +55,8 @@ class BackendData:
         print(self.currentDest)
 
         # Assume snycbool is on, count numberr of drones at their destination
-        for dronecount, drone in enumerate(self.droneList):
-            if(self.currentLoc[dronecount] == self.currentDest[dronecount]):
+        for droneCount, drone in enumerate(self.droneList):
+            if(self.currentLoc[droneCount] == self.currentDest[droneCount]):
                 dronesAtDest += 1
 
         return dronesAtDest
@@ -93,7 +93,7 @@ class BackendData:
         # Drone was out of bounds
         if(errorFlag):
             self.activateQuitBool()
-            #Publish to console_pub about flight ending because a drone flew out of bounds
+            #Publish to consolePub about flight ending because a drone flew out of bounds
             print "Drone flew out of bounds"
 
     #Updates current location of drones, whenever sim input is received
@@ -102,7 +102,7 @@ class BackendData:
 
     # Activates wuit bool and sets all drones to land
     def activateQuitBool(self):
-        global dest_pub
+        global destPub
         self.quitBool = True
         # Update all destinations to fly straight down
         newDests = []
@@ -110,28 +110,28 @@ class BackendData:
             newDests.append([drone[0], drone[1], 0.0])
 
         self.currentDest = newDests
-        dest_pub.publish(str(newDests))
+        destPub.publish(str(newDests))
 
 
     # Checks which drones have reached dest and updates dests accordingly
     def checkAtDest(self):
-        global dest_pub
+        global destPub
         dronesAtDest = self.dronesAtDest()
 
         newDests = []
         # Assuming syncbool, check if all drones are at dest
         if(dronesAtDest == len(self.droneList)):
             #They are, update destlist
-            for dronecount, drone in enumerate(self.destList):
+            for droneCount, drone in enumerate(self.destList):
                 try:
-                    newDests.append(self.destList[dronecount][self.destIndexList[dronecount] + 1])
+                    newDests.append(self.destList[droneCount][self.destIndexList[droneCount] + 1])
                 except:
-                    newDests.append(self.destList[dronecount][-1])
-                self.destIndexList[dronecount] += 1
+                    newDests.append(self.destList[droneCount][-1])
+                self.destIndexList[droneCount] += 1
             self.currentDest = newDests
 
             #publish new dests to sim
-            dest_pub.publish(str(newDests))
+            destPub.publish(str(newDests))
 
         # Do nothing otherwise
 
@@ -144,8 +144,8 @@ def pointWithinRectangle(point, corner1, corner2):
     print point, corner1, corner2
 
     # Check X values within range
-    for xyzindex in range(3):
-        if((point[xyzindex] >= corner1[xyzindex] and point[xyzindex] <= corner2[xyzindex]) or (point[xyzindex] <= corner1[xyzindex] and point[xyzindex] >= corner2[xyzindex])):
+    for xyzIndex in range(3):
+        if((point[xyzIndex] >= corner1[xyzIndex] and point[xyzIndex] <= corner2[xyzIndex]) or (point[xyzIndex] <= corner1[xyzIndex] and point[xyzIndex] >= corner2[xyzIndex])):
             pass
         else:
             withinRect = False
@@ -154,13 +154,13 @@ def pointWithinRectangle(point, corner1, corner2):
 
 # Forwards drone locations to vis
 def forwardDroneLocs():
-    global backend, visualization_pub
+    global backend, visualizationPub
 
-    visualization_pub.publish(str(backend.currentLoc))
+    visualizationPub.publish(str(backend.currentLoc))
 
 
 def receivedLocations(data):
-    global backend, visualization_pub, dest_pub, console_pub
+    global backend, visualizationPub, destPub, consolePub
     eventString = ""
 
     # Update drone locations in backend
@@ -174,7 +174,7 @@ def receivedLocations(data):
 
     # Publish events to console
     if(eventString):
-        console_pub.publish(eventString)
+        consolePub.publish(eventString)
 
     # Forward drone locations, publishing to vis
     forwardDroneLocs()
@@ -194,18 +194,18 @@ def receivedEStop(data):
 
 
 
-def runBackend(dronelist, dests, obstacles):
+def runBackend(droneList, dests, obstacles):
     # Get global publishers
-    global backend, visualization_pub, dest_pub, console_pub
+    global backend, visualizationPub, destPub, consolePub
 
     # Initialize backend data
-    backend = BackendData(dronelist, dests, obstacles)
+    backend = BackendData(droneList, dests, obstacles)
 
     # Setup subscribers + ros stuff
     rospy.init_node('backend', anonymous=True)
 
     # publish first point to sim and viz to init
-    dest_pub.publish(str(backend.currentDest))
+    destPub.publish(str(backend.currentDest))
 
     rospy.Subscriber('simtoback', String, receivedLocations)
     rospy.Subscriber('monitortoback', String, receivedEStop)
@@ -223,7 +223,7 @@ def launchGui():
     gui.show()
     app.exec_()
 
-    return gui.get_data()
+    return gui.getData()
 
 def main():
     flightData = launchGui()
@@ -239,8 +239,8 @@ def main():
         for tupleCount, tuple in enumerate(clist):
             coordList[listCount][tupleCount] = list(tuple)
     print("coordList: ", coordList)
-    runBackend(droneList, coordList, objectDict)
-    #runBackend([1,2], [[[-4.0,-4.0,5.0],[4.0,-4.0,5.0],[4.0,4.0,5.0],[-4.0,4.0,5.0]],[[2.0,-2.0,3.0],[-2.0,-2.0,3.0],[-2.0,2.0,3.0],[2.0,2.0,3.0]]], {})
+    #runBackend(droneList, coordList, objectDict)
+    runBackend([1,2], [[[-4.0,-4.0,5.0],[4.0,-4.0,5.0],[4.0,4.0,5.0],[-4.0,4.0,5.0]],[[2.0,-2.0,3.0],[-2.0,-2.0,3.0],[-2.0,2.0,3.0],[2.0,2.0,3.0]]], {})
 
 if __name__ == "__main__":
     main()
