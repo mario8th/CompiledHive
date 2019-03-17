@@ -3,870 +3,929 @@ from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
+# Main window for user input
 class MainWindow(QMainWindow):
-   count = 0
-   def get_data(self):
-      drone_count = 1.0
-      for drone in self.drone_coords:
-         self.drone_coords[drone] = [(drone_count, 0, 0)] + self.drone_coords[drone]
-         drone_count = round(drone_count + .3,2)
-      return (self.drones_connected, self.fp_connected, self.drone_coords, self.object_dict)
+    count = 0
 
-   def __init__(self, parent = None):
-      super(MainWindow, self).__init__(parent)
-      self.resize(1000,800)
-      self.setWindowTitle("CrazySwarm Flight Path Stuff")
+    # Collects user input data and returns it as a tuple
+    # Logs all data before returning
+    def getData(self):
+        droneCount = 1.0
+        # Starts initial drone at (1,1,0), adds .3 to x value for every additional drone
+        for drone in self.droneCoords:
+            self.droneCoords[drone] = [(droneCount, 1, 0)] + self.droneCoords[drone]
+            droneCount = round(droneCount + .3,2)
+        self.logInfo()
+        return (self.dronesConnected, self.fpConnected, self.droneCoords, self.objectDict)
 
-      self.drones_connected = []
-      self.drones_available = []
-      self.fp_connected = {}
-      self.drone_coords = {}
-      self.object_dict = {}
-      self.file_names = "flights.txt"
+    # Initializes GUI for user input
+    def __init__(self, parent = None):
+        super(MainWindow, self).__init__(parent)
+        self.resize(1000,800)
+        self.setWindowTitle("CrazySwarm Flight Path Stuff")
 
-      self.drone_select()
-      self.fp_select()
-      self.connect_drone_to_fp()
-      self.coordinates()
-      self.objects()
+        # Initialize field variables for user input storage
+        self.dronesConnected = []
+        self.dronesAvailable = []
+        self.fpConnected = {}
+        self.droneCoords = {}
+        self.objectDict = {}
+        self.fileNames = "flights.txt"
 
-      self.toggle_vis = QPushButton('Toggle Vis', self)
-      self.toggle_vis.move(520, 250)
-      self.toggle_vis.clicked.connect(self.open_toggle_vis)
-      self.toggle_log = QPushButton('Toggle Log', self)
-      self.toggle_log.move(520, 300)
-      self.toggle_log.clicked.connect(self.open_toggle_log)
-      self.start_flight = QPushButton('Start Flight', self)
-      self.start_flight.move(520, 400)
-      self.start_flight.clicked.connect(self.start_flight_action)
+        # Sub methods initialize respective sub modules
+        self.droneSelect()
+        self.fpSelect()
+        self.connectDroneToFP()
+        self.coordinates()
+        self.objects()
 
-   def drone_select(self):
-      self.label_ds = QtGui.QLabel(self)
-      self.label_ds.setText("Enter a drone id:")
-      self.label_ds.move(20, 25)
-      self.label_ds.resize(110, 20)
+        # Add buttons for vis and log toggles and start buttons
+        # Connects buttons to method listeners
+        self.toggleVis = QPushButton('Toggle Vis', self)
+        self.toggleVis.move(520, 250)
+        self.toggleVis.clicked.connect(self.openToggleVis)
+        self.toggleLog = QPushButton('Toggle Log', self)
+        self.toggleLog.move(520, 300)
+        self.toggleLog.clicked.connect(self.openToggleLog)
+        self.startFlight = QPushButton('Start Flight', self)
+        self.startFlight.move(520, 400)
+        self.startFlight.clicked.connect(self.startFlightAction)
 
-      self.textbox_ds = QLineEdit(self)
-      self.textbox_ds.resize(60, 40)
-      self.textbox_ds.move(20, 50)
+    # Initializes area for selection of drones
+    # Connects add and remove buttons to respective listeners
+    def droneSelect(self):
+        self.labelDS = QtGui.QLabel(self)
+        self.labelDS.setText("Enter a drone id:")
+        self.labelDS.move(20, 25)
+        self.labelDS.resize(110, 20)
 
-      self.ds_add = QPushButton('Add Drone', self)
-      self.ds_add.move(90, 55)
-      self.ds_add.clicked.connect(self.add_drone_click)
+        self.textboxDS = QLineEdit(self)
+        self.textboxDS.resize(60, 40)
+        self.textboxDS.move(20, 50)
 
-      self.ds_combo = QComboBox(self)
-      self.ds_combo.move(20, 95)
-      self.ds_combo.resize(60,40)
-      self.ds_combo.addItem("")
+        self.dsAdd = QPushButton('Add Drone', self)
+        self.dsAdd.move(90, 55)
+        self.dsAdd.clicked.connect(self.addDroneClick)
 
-      self.ds_remove = QPushButton('Remove Drone', self)
-      self.ds_remove.move(90, 100)
-      self.ds_remove.clicked.connect(self.remove_drone_click)
+        self.dsCombo = QComboBox(self)
+        self.dsCombo.move(20, 95)
+        self.dsCombo.resize(60,40)
+        self.dsCombo.addItem("")
 
-   def add_drone_click(self):
-      # TODO Connect to Drone Location System
-      curr_drone = str(self.textbox_ds.text())
-      self.textbox_ds.setText('')
-      if(curr_drone == ''):
-         return
-      if(curr_drone in self.drones_connected):
-         return
-      if(len(self.drones_connected) < 7):
-         self.drones_connected.append(curr_drone)
-         self.drones_available.append(curr_drone)
-         self.ds_combo.addItem(curr_drone)
-         self.cdtfp_avail_combo.addItem(curr_drone)
-         self.combo_c_drone.addItem(curr_drone)
-         self.drone_coords[curr_drone] = []
+        self.dsRemove = QPushButton('Remove Drone', self)
+        self.dsRemove.move(90, 100)
+        self.dsRemove.clicked.connect(self.removeDroneClick)
 
-   def remove_drone_click(self):
-      drone_id = str(self.ds_combo.currentText())
-      if(drone_id == ''):
-         return
-      drone_index = self.ds_combo.currentIndex()
-      print "removing drone {}".format(drone_id)
-      self.ds_combo.removeItem(drone_index)
-      self.drones_connected.remove(drone_id)
-      if drone_id in self.drones_available:
-         drone_index = self.cdtfp_avail_combo.findText(drone_id)
-         self.cdtfp_avail_combo.removeItem(drone_index)
-         drone_index = self.combo_c_drone.findText(drone_id)
-         self.combo_c_drone.removeItem(drone_index)
-         print self.drone_coords
-         self.drone_coords.pop(drone_id)
-      else:
-         drone_index = self.cdtfp_rem_combo.findText(drone_id)
-         if drone_index >= 0:
-            self.cdtfp_rem_combo.remove(drone_index)
-         for key in self.fp_connected:
-            if drone_id in self.fp_connected[key]:
-               self.fp_connected[key].remove(drone_id)
+    # Adds drone from user text box to dronesConnected list
+    # to the dronesAvailable list
+    # to the drone select combo box
+    # to the add drone to flight path combo box
+    # to the droneCoords dict as a new key
+    def addDroneClick(self):
+        # TODO Connect to Drone Location System
+        currDrone = str(self.textboxDS.text())
+        self.textboxDS.setText('')
+        if(currDrone == ''):
+            return
+        if(currDrone in self.dronesConnected):
+            return
+        if(len(self.dronesConnected) < 7):
+            self.dronesConnected.append(currDrone)
+            self.dronesAvailable.append(currDrone)
+            self.dsCombo.addItem(currDrone)
+            self.cdtfpAvailCombo.addItem(currDrone)
+            self.comboCDrone.addItem(currDrone)
+            self.droneCoords[currDrone] = []
 
+    # removes drone from all previously mentioned places from previous method
+    # if the drone is not in dronesAvailable, it goes and removes it from
+    # the flight path it is connected to as well
+    def removeDroneClick(self):
+        droneID = str(self.dsCombo.currentText())
+        if(droneID == ''):
+            return
+        droneIndex = self.dsCombo.currentIndex()
+        print "removing drone {}".format(droneID)
+        self.dsCombo.removeItem(droneIndex)
+        self.dronesConnected.remove(droneID)
+        if droneID in self.dronesAvailable:
+            droneIndex = self.cdtfpAvailCombo.findText(droneID)
+            self.cdtfpAvailCombo.removeItem(droneIndex)
+            droneIndex = self.comboCDrone.findText(droneID)
+            self.comboCDrone.removeItem(droneIndex)
+            print self.droneCoords
+            self.droneCoords.pop(droneID)
+        else:
+            droneIndex = self.cdtfpRemCombo.findText(droneID)
+            if droneIndex >= 0:
+                self.cdtfpRemCombo.remove(droneIndex)
+            for key in self.fpConnected:
+                if droneID in self.fpConnected[key]:
+                    self.fpConnected[key].remove(droneID)
 
-   def fp_select(self):
-      self.label_fps = QLabel(self)
-      self.label_fps.setText("Select a flight path:")
-      self.label_fps.move(20, 150)
-      self.label_fps.resize(180, 20)
+    # Initializes areas for user to import a flight path and connects needed listners
+    def fpSelect(self):
+        self.labelFPs = QLabel(self)
+        self.labelFPs.setText("Select a flight path:")
+        self.labelFPs.move(20, 150)
+        self.labelFPs.resize(180, 20)
 
-      #self.textbox_fps = QLine(self)
-      #self.textbox_fps.resize(280, 40)
-      #self.textbox_fps.move(20, 170)
-      self.combo_fps = QtGui.QComboBox(self)
-      self.combo_fps.move(20, 170)
+        self.comboFPs = QtGui.QComboBox(self)
+        self.comboFPs.move(20, 170)
 
-      self.fps_add = QPushButton('Upload', self)
-      self.fps_add.move(20, 220)
-      self.fps_add.clicked.connect(self.add_fp_click)
+        self.fpsAdd = QPushButton('Upload', self)
+        self.fpsAdd.move(20, 220)
+        self.fpsAdd.clicked.connect(self.addFPClick)
 
-      self.fps_remove = QPushButton('Remove', self)
-      self.fps_remove.move(200, 220)
-      self.fps_remove.clicked.connect(self.rem_fp_click)
+        self.fpsRemove = QPushButton('Remove', self)
+        self.fpsRemove.move(200, 220)
+        self.fpsRemove.clicked.connect(self.remFPClick)
 
-   def add_fp_click(self):
-      message = QMessageBox()
-      self.current_file = QtGui.QFileDialog.getOpenFileName(self, 'Open File')
-      #if self.check_for_file(self.current_file) == False:
-      temp = self.get_file_name(self.current_file)
-      if temp[-2:] == 'py':
-         #check file is python file
-         temp = temp.remove(".py")
-         self.combo_fps.addItem(temp)
-         self.combo_fp_cdtfp.addItem(temp)
-         temp = str(temp)
-         self.fp_connected[temp] = []
-         file = open(self.file_names, 'a')
-         file.write(" "+temp)
-         file.close()
-         self.create_file(temp)
-      else:
-         message.setText("File must be python file ")
-         message.setWindowTitle("Error")
+    # Allows user to import a python file, checks if valid, and saves it
+    # into comboFPs, comboFPcdtfp, and adds it as a key to fpConnected
+    def addFPClick(self):
+        message = QMessageBox()
+        self.currentFile = QtGui.QFileDialog.getOpenFileName(self, 'Open File')
+        #if self.checkForFile(self.currentFile) == False:
+        tempName = self.getFileName(self.currentFile)
+        if tempName[-2:] == 'py':
+            #check file is python file
+            tempName = tempName.remove(".py")
+            self.comboFPs.addItem(tempName)
+            self.comboFPcdtfp.addItem(tempName)
+            tempName = str(tempName)
+            self.fpConnected[tempName] = []
+            file = open(self.fileNames, 'a')
+            file.write(" " + tempName)
+            file.close()
+            self.create_file(tempName)
+        else:
+            # Give error if not
+            message.setText("File must be python file ")
+            message.setWindowTitle("Error")
 
-         message.setStandardButtons(QMessageBox.Ok)
-         retval = message.exec_()
-      return
-
-   def check_for_file(self,my_file):
-       for count in range(self.combo_fps.count()):
-          if self.comboBox.itemText(count) == my_file:
-              return True
-          else:
-              return False
-
-   def create_file(self, a_file):
-        with open(self.current_file) as file_in:
-            with open(a_file + ".py", "w") as file_out:
-                for line in file_in:
-                   file_out.write(line)
+            message.setStandardButtons(QMessageBox.Ok)
+            retval = message.exec_()
         return
 
-   def get_file_name(self, a_file):
-        temp = a_file
-        if temp.contains("/") == True:
-            temp = temp.section('/', -1)
-        return temp
+    # Checks if file already in comboFPs
+    def checkForFile(self, myFile):
+        for count in range(self.comboFPs.count()):
+            if self.comboBox.itemText(count) == myFile:
+                return True
+            else:
+                return False
 
-   def rem_fp_click(self):
-      file = open(self.file_names, 'w+')
-      for line in file:
-        temp = line.split(" ")
-        for name in temp:
-           index = 0;
-           if name == self.current_file:
-               index += 1
-              #TO DO remove file from computer
-               self.combo_fps.removeItem(index)
-               file.write(" ")
-           else:
-               index += 1
-               file.write(name)
-      file.close()
-      return
+    # Writes all lines from file into fileOut
+    def create_file(self, file):
+        with open(self.currentFile) as fileIn:
+            with open(file + ".py", "w") as fileOut:
+                for line in fileIn:
+                    fileOut.write(line)
+        return
 
-   def connect_drone_to_fp(self):
-      self.label_fp_cdtfp = QtGui.QLabel(self)
-      self.label_fp_cdtfp.setText("Select Flight Path:")
-      self.label_fp_cdtfp.resize(150, 20)
-      self.label_fp_cdtfp.move(20,255)
-      self.combo_fp_cdtfp = QtGui.QComboBox(self)
-      self.combo_fp_cdtfp.resize(110, 40)
-      self.combo_fp_cdtfp.move(20, 275)
-      self.combo_fp_cdtfp.currentIndexChanged.connect(self.fp_combo_changed)
+    # Lexie I don't know what this is doing
+    def getFileName(self, file):
+        tempFile = file
+        if tempFile.contains("/") == True:
+            tempFile = tempFile.section('/', -1)
+        return tempFile
 
-      self.cdtfp_avail_label = QtGui.QLabel(self)
-      self.cdtfp_avail_label.setText("Select Drone:")
-      self.cdtfp_avail_label.resize(150, 20)
-      self.cdtfp_avail_label.move(150 ,255)
-      self.cdtfp_avail_combo = QtGui.QComboBox(self)
-      self.cdtfp_avail_combo.resize(110,40)
-      self.cdtfp_avail_combo.move(150, 275)
-      self.cdtfp_add = QtGui.QPushButton('Add', self)
-      self.cdtfp_add.move(150, 320)
-      self.cdtfp_add.resize(110, 30)
-      self.cdtfp_add.clicked.connect(self.add_drone_to_fp_click)
+    # Removes file from comboFPS and fileNames
+    def remFPClick(self):
+        file = open(self.fileNames, 'w+')
+        for line in file:
+            temp = line.split(" ")
+            for name in temp:
+                index = 0;
+                if name == self.currentFile:
+                    index += 1
+                    #TO DO remove file from computer
+                    self.comboFPs.removeItem(index)
+                    file.write(" ")
+                else:
+                    index += 1
+                    file.write(name)
+        file.close()
+        return
 
-      self.cdtfp_rem_label = QtGui.QLabel(self)
-      self.cdtfp_rem_label.setText("Select Drone:")
-      self.cdtfp_rem_label.resize(150, 20)
-      self.cdtfp_rem_label.move(280, 255)
-      self.cdtfp_rem_combo = QtGui.QComboBox(self)
-      self.cdtfp_rem_combo.resize(110, 40)
-      self.cdtfp_rem_combo.move(280, 275)
-      self.cdtfp_remove = QtGui.QPushButton("Remove", self)
-      self.cdtfp_remove.move(280, 320)
-      self.cdtfp_remove.resize(110, 30)
-      self.cdtfp_remove.clicked.connect(self.rem_drone_from_fp_click)
+    # Initializes all areas for user input to connect drones to a flight path
+    # connects all respective button listeners
+    def connectDroneToFP(self):
+        self.labelFPcdtfp = QtGui.QLabel(self)
+        self.labelFPcdtfp.setText("Select Flight Path:")
+        self.labelFPcdtfp.resize(150, 20)
+        self.labelFPcdtfp.move(20,255)
+        self.comboFPcdtfp = QtGui.QComboBox(self)
+        self.comboFPcdtfp.resize(110, 40)
+        self.comboFPcdtfp.move(20, 275)
+        self.comboFPcdtfp.currentIndexChanged.connect(self.fpComboChanged)
 
-   def add_drone_to_fp_click(self):
-      curr_fp = str(self.combo_fp_cdtfp.currentText())
-      curr_drone = str(self.cdtfp_avail_combo.currentText())
-      curr_index = self.cdtfp_avail_combo.currentIndex()
-      self.cdtfp_avail_combo.removeItem(curr_index)
-      self.drones_available.remove(curr_drone)
-      self.fp_connected[curr_fp].append(curr_drone)
-      self.drone_coords.pop(curr_drone)
-      curr_index = self.combo_c_drone.findText(curr_drone)
-      self.combo_c_drone.removeItem(curr_index)
-      self.cdtfp_rem_combo.addItem(curr_drone)
-      return
+        self.cdtfpAvailLabel = QtGui.QLabel(self)
+        self.cdtfpAvailLabel.setText("Select Drone:")
+        self.cdtfpAvailLabel.resize(150, 20)
+        self.cdtfpAvailLabel.move(150 ,255)
+        self.cdtfpAvailCombo = QtGui.QComboBox(self)
+        self.cdtfpAvailCombo.resize(110,40)
+        self.cdtfpAvailCombo.move(150, 275)
+        self.cdtfpAdd = QtGui.QPushButton('Add', self)
+        self.cdtfpAdd.move(150, 320)
+        self.cdtfpAdd.resize(110, 30)
+        self.cdtfpAdd.clicked.connect(self.addDroneToFPClick)
 
-   def rem_drone_from_fp_click(self):
-      curr_fp = str(self.combo_fp_cdtfp.currentText())
-      curr_drone = str(self.cdtfp_rem_combo.currentText())
-      curr_index = self.cdtfp_rem_combo.currentIndex()
-      if curr_drone != '':
-         self.cdtfp_rem_combo.removeItem(curr_index)
-         self.fp_connected[curr_fp].remove(curr_drone)
-         self.drones_available.append(curr_drone)
-         self.drone_coords[curr_drone] = []
-         self.cdtfp_avail_combo.addItem(curr_drone)
-         self.combo_c_drone.addItem(curr_drone)
-      return
+        self.cdtfpRemLabel = QtGui.QLabel(self)
+        self.cdtfpRemLabel.setText("Select Drone:")
+        self.cdtfpRemLabel.resize(150, 20)
+        self.cdtfpRemLabel.move(280, 255)
+        self.cdtfpRemCombo = QtGui.QComboBox(self)
+        self.cdtfpRemCombo.resize(110, 40)
+        self.cdtfpRemCombo.move(280, 275)
+        self.cdtfpRemove = QtGui.QPushButton("Remove", self)
+        self.cdtfpRemove.move(280, 320)
+        self.cdtfpRemove.resize(110, 30)
+        self.cdtfpRemove.clicked.connect(self.remDroneFromFPClick)
 
-   def fp_combo_changed(self):
-      self.cdtfp_rem_combo.clear()
-      curr_fp = str(self.combo_fp_cdtfp.currentText())
-      if curr_fp != '':
-         for drone in self.fp_connected[curr_fp]:
-            self.cdtfp_rem_combo.addItem(drone)
-      return
+    # Adds drone to selected flight path
+    # adds to dictionary keyd to fp
+    # removes from dronesAvailable and necessary combo box
+    def addDroneToFPClick(self):
+        currFP = str(self.comboFPcdtfp.currentText())
+        currDrone = str(self.cdtfpAvailCombo.currentText())
+        currIndex = self.cdtfpAvailCombo.currentIndex()
+        self.cdtfpAvailCombo.removeItem(currIndex)
+        self.dronesAvailable.remove(currDrone)
+        self.fpConnected[currFP].append(currDrone)
+        self.droneCoords.pop(currDrone)
+        currIndex = self.comboCDrone.findText(currDrone)
+        self.comboCDrone.removeItem(currIndex)
+        self.cdtfpRemCombo.addItem(currDrone)
+        return
 
-   def coordinates(self):
-      self.label_c_drone = QtGui.QLabel(self)
-      self.label_c_drone.setText("Choose Drone:")
-      self.label_c_drone.resize(150, 20)
-      self.label_c_drone.move(20, 375)
-      self.combo_c_drone = QtGui.QComboBox(self)
-      self.combo_c_drone.resize(110, 40)
-      self.combo_c_drone.move(20, 395)
-      self.combo_c_drone.currentIndexChanged.connect(self.coord_combo_changed)
-      self.label_c_coord = QtGui.QLabel(self)
-      self.label_c_coord.setText("Enter Coordinate:")
-      self.label_c_coord.resize(120, 20)
-      self.label_c_coord.move(145, 375)
-      self.label_c_x = QtGui.QLabel(self)
-      self.label_c_x.move(145, 400)
-      self.label_c_x.setText('X:')
-      self.textbox_c_x = QtGui.QLineEdit(self)
-      self.textbox_c_x.resize(60, 40)
-      self.textbox_c_x.move(160, 395)
-      self.label_c_y = QtGui.QLabel(self)
-      self.label_c_y.setText("Y:")
-      self.label_c_y.move(230, 400)
-      self.textbox_c_y = QtGui.QLineEdit(self)
-      self.textbox_c_y.resize(60, 40)
-      self.textbox_c_y.move(245, 395)
-      self.label_c_z = QtGui.QLabel(self)
-      self.label_c_z.setText('Z:')
-      self.label_c_z.move(315, 400)
-      self.textbox_c_z = QtGui.QLineEdit(self)
-      self.textbox_c_z.resize(60, 40)
-      self.textbox_c_z.move(330, 395)
-      self.add_c_coord = QtGui.QPushButton("Add", self)
-      self.add_c_coord.move(160, 445)
-      self.add_c_coord.clicked.connect(self.add_coord)
+    # Removes drone from selected flight path
+    # removes from fpConnected dictionary, and adds to
+    # dronesAvailable and necessary combo boxes
+    def remDroneFromFPClick(self):
+        currFP = str(self.comboFPcdtfp.currentText())
+        currDrone = str(self.cdtfpRemCombo.currentText())
+        currIndex = self.cdtfpRemCombo.currentIndex()
+        if currDrone != '':
+            self.cdtfpRemCombo.removeItem(currIndex)
+            self.fpConnected[currFP].remove(currDrone)
+            self.dronesAvailable.append(currDrone)
+            self.droneCoords[currDrone] = []
+            self.cdtfpAvailCombo.addItem(currDrone)
+            self.comboCDrone.addItem(currDrone)
+        return
 
-      self.label_c_coord = QtGui.QLabel(self)
-      self.label_c_coord.setText('Select Coordinate:')
-      self.label_c_coord.resize(130, 20)
-      self.label_c_coord.move(20, 470)
-      self.combo_c_coord = QtGui.QComboBox(self)
-      self.combo_c_coord.resize(110, 40)
-      self.combo_c_coord.move(20, 490)
-      self.rem_c_coord = QtGui.QPushButton('Remove', self)
-      self.rem_c_coord.move(140, 495)
-      self.rem_c_coord.clicked.connect(self.rem_coord)
+    # Detects if the flight path selection combo box has changed
+    # if so, changes the drone remove combo to display drones connected to
+    # the newly selected flight path
+    def fpComboChanged(self):
+        self.cdtfpRemCombo.clear()
+        currFP = str(self.comboFPcdtfp.currentText())
+        if currFP != '':
+            for drone in self.fpConnected[currFP]:
+                self.cdtfpRemCombo.addItem(drone)
+        return
 
-   def add_coord(self):
-      x_coord = self.textbox_c_x.text()
-      y_coord = self.textbox_c_y.text()
-      z_coord = self.textbox_c_z.text()
-      curr_drone = str(self.combo_c_drone.currentText())
-      if x_coord != '' and y_coord != '' and z_coord != '' and curr_drone != '':
-         self.textbox_c_x.setText('')
-         self.textbox_c_y.setText('')
-         self.textbox_c_z.setText('')
+    # Initiates all areas for user to input coordinats for drones to fly to
+    def coordinates(self):
+        self.labelCDrone = QtGui.QLabel(self)
+        self.labelCDrone.setText("Choose Drone:")
+        self.labelCDrone.resize(150, 20)
+        self.labelCDrone.move(20, 375)
+        self.comboCDrone = QtGui.QComboBox(self)
+        self.comboCDrone.resize(110, 40)
+        self.comboCDrone.move(20, 395)
+        self.comboCDrone.currentIndexChanged.connect(self.coordComboChanged)
+        self.labelCCoordEnter = QtGui.QLabel(self)
+        self.labelCCoordEnter.setText("Enter Coordinate:")
+        self.labelCCoordEnter.resize(120, 20)
+        self.labelCCoordEnter.move(145, 375)
+        self.labelCX = QtGui.QLabel(self)
+        self.labelCX.move(145, 400)
+        self.labelCX.setText('X:')
+        self.textboxCX = QtGui.QLineEdit(self)
+        self.textboxCX.resize(60, 40)
+        self.textboxCX.move(160, 395)
+        self.labelCY = QtGui.QLabel(self)
+        self.labelCY.setText("Y:")
+        self.labelCY.move(230, 400)
+        self.textboxCY = QtGui.QLineEdit(self)
+        self.textboxCY.resize(60, 40)
+        self.textboxCY.move(245, 395)
+        self.labelCZ = QtGui.QLabel(self)
+        self.labelCZ.setText('Z:')
+        self.labelCZ.move(315, 400)
+        self.textboxCZ = QtGui.QLineEdit(self)
+        self.textboxCZ.resize(60, 40)
+        self.textboxCZ.move(330, 395)
+        self.addCCoord = QtGui.QPushButton("Add", self)
+        self.addCCoord.move(160, 445)
+        self.addCCoord.clicked.connect(self.addCoord)
 
-         try:
-            x_coord = float(x_coord)
-            y_coord = float(y_coord)
-            z_coord = float(z_coord)
-         except:
-            return
+        self.labelCCoordSelect = QtGui.QLabel(self)
+        self.labelCCoordSelect.setText('Select Coordinate:')
+        self.labelCCoordSelect.resize(130, 20)
+        self.labelCCoordSelect.move(20, 470)
+        self.comboCCoord = QtGui.QComboBox(self)
+        self.comboCCoord.resize(110, 40)
+        self.comboCCoord.move(20, 490)
+        self.remCCoord = QtGui.QPushButton('Remove', self)
+        self.remCCoord.move(140, 495)
+        self.remCCoord.clicked.connect(self.remCoord)
 
-         x_bool = x_coord >= -4 and x_coord <= 4
-         y_bool = y_coord >= -4 and y_coord <= 4
-         z_bool = z_coord >= 0 and z_coord <= 9
-         if x_bool and y_bool and z_bool:
-            coordinate = (x_coord, y_coord, z_coord)
-            self.drone_coords[curr_drone].append(coordinate)
-            coordinate = '(' + str(x_coord) + ',' + str(y_coord) + ','  + str(z_coord) + ')'
-            self.combo_c_coord.addItem(coordinate)
-      return
+    # Adds coordinates to the flight path of the current selected drone
+    # and adds to droneCoords dictionary
+    def addCoord(self):
+        xCoord = self.textboxCX.text()
+        yCoord = self.textboxCY.text()
+        zCoord = self.textboxCZ.text()
+        currDrone = str(self.comboCDrone.currentText())
+        # Checks all inputs are filled
+        if xCoord != '' and yCoord != '' and zCoord != '' and currDrone != '':
+            self.textboxCX.setText('')
+            self.textboxCY.setText('')
+            self.textboxCZ.setText('')
 
-   def rem_coord(self):
-      curr_coord = str(self.combo_c_coord.currentText())
-      curr_index = self.combo_c_coord.currentIndex()
-      curr_drone = str(self.combo_c_drone.currentText())
-      self.combo_c_coord.removeItem(curr_index)
-      curr_coord = curr_coord[1:-1].split(',')
-      curr_coord = (float(curr_coord[0]), float(curr_coord[1]), float(curr_coord[2]))
-      self.drone_coords[curr_drone].remove(curr_coord)
-      return
+            # Checks all inputs are numbers
+            try:
+                xCoord = float(xCoord)
+                yCoord = float(yCoord)
+                zCoord = float(zCoord)
+            except:
+                return
+            # Checks if inputs in bounds, then adds to droneCoords and coord combo box
+            x_bool = xCoord >= -4 and xCoord <= 4
+            y_bool = yCoord >= -4 and yCoord <= 4
+            z_bool = zCoord >= 0 and zCoord <= 9
+            if x_bool and y_bool and z_bool:
+                coordinate = (xCoord, yCoord, zCoord)
+                self.droneCoords[currDrone].append(coordinate)
+                coordinate = '(' + str(xCoord) + ',' + str(yCoord) + ','  + str(zCoord) + ')'
+                self.comboCCoord.addItem(coordinate)
+        return
 
-   def coord_combo_changed(self):
-      self.combo_c_coord.clear()
-      curr_drone = str(self.combo_c_drone.currentText())
-      for coord in self.drone_coords[curr_drone]:
-         coordinate = '(' + str(coord[0]) + ',' + str(coord[1]) + ',' + str(coord[2]) + ')'
-         self.combo_c_coord.addItem(coordinate)
-      return
+    # Removes selected coordinate from droneCoords
+    def remCoord(self):
+        currCoord = str(self.comboCCoord.currentText())
+        currIndex = self.comboCCoord.currentIndex()
+        currDrone = str(self.comboCDrone.currentText())
+        self.comboCCoord.removeItem(currIndex)
+        currCoord = currCoord[1:-1].split(',')
+        currCoord = (float(currCoord[0]), float(currCoord[1]), float(currCoord[2]))
+        self.droneCoords[currDrone].remove(currCoord)
+        return
 
-   def objects(self):
-      self.label_o_coord = QtGui.QLabel(self)
-      self.label_o_coord.setText("Enter Corner Coordinates:")
-      self.label_o_coord.resize(200, 20)
-      self.label_o_coord.move(520, 25)
-      self.label_o_x1 = QtGui.QLabel(self)
-      self.label_o_x1.move(520, 50)
-      self.label_o_x1.setText('X:')
-      self.textbox_o_x1 = QtGui.QLineEdit(self)
-      self.textbox_o_x1.resize(60, 40)
-      self.textbox_o_x1.move(535, 45)
-      self.label_o_y1 = QtGui.QLabel(self)
-      self.label_o_y1.setText("Y:")
-      self.label_o_y1.move(605, 50)
-      self.textbox_o_y1 = QtGui.QLineEdit(self)
-      self.textbox_o_y1.resize(60, 40)
-      self.textbox_o_y1.move(620, 45)
-      self.label_o_z1 = QtGui.QLabel(self)
-      self.label_o_z1.setText('Z:')
-      self.label_o_z1.move(690, 50)
-      self.textbox_o_z1 = QtGui.QLineEdit(self)
-      self.textbox_o_z1.resize(60, 40)
-      self.textbox_o_z1.move(705, 45)
+    # Detects if another drone has been selected and displays the coordinates
+    # connected to it
+    def coordComboChanged(self):
+        self.comboCCoord.clear()
+        currDrone = str(self.comboCDrone.currentText())
+        for coord in self.droneCoords[currDrone]:
+            coordinate = '(' + str(coord[0]) + ',' + str(coord[1]) + ',' + str(coord[2]) + ')'
+            self.comboCCoord.addItem(coordinate)
+        return
 
-      self.label_o_x2 = QtGui.QLabel(self)
-      self.label_o_x2.move(520, 100)
-      self.label_o_x2.setText('X:')
-      self.textbox_o_x2 = QtGui.QLineEdit(self)
-      self.textbox_o_x2.resize(60, 40)
-      self.textbox_o_x2.move(535, 95)
-      self.label_o_y2 = QtGui.QLabel(self)
-      self.label_o_y2.setText("Y:")
-      self.label_o_y2.move(605, 100)
-      self.textbox_o_y2 = QtGui.QLineEdit(self)
-      self.textbox_o_y2.resize(60, 40)
-      self.textbox_o_y2.move(620, 95)
-      self.label_o_z2 = QtGui.QLabel(self)
-      self.label_o_z2.setText('Z:')
-      self.label_o_z2.move(690, 100)
-      self.textbox_o_z2 = QtGui.QLineEdit(self)
-      self.textbox_o_z2.resize(60, 40)
-      self.textbox_o_z2.move(705, 95)
+    # Initializes the input areas for adding objects
+    def objects(self):
+        self.labelOCoord = QtGui.QLabel(self)
+        self.labelOCoord.setText("Enter Corner Coordinates:")
+        self.labelOCoord.resize(200, 20)
+        self.labelOCoord.move(520, 25)
+        self.labelOX1 = QtGui.QLabel(self)
+        self.labelOX1.move(520, 50)
+        self.labelOX1.setText('X:')
+        self.textboxOX1 = QtGui.QLineEdit(self)
+        self.textboxOX1.resize(60, 40)
+        self.textboxOX1.move(535, 45)
+        self.labelOY1 = QtGui.QLabel(self)
+        self.labelOY1.setText("Y:")
+        self.labelOY1.move(605, 50)
+        self.textboxOY1 = QtGui.QLineEdit(self)
+        self.textboxOY1.resize(60, 40)
+        self.textboxOY1.move(620, 45)
+        self.labelOZ1 = QtGui.QLabel(self)
+        self.labelOZ1.setText('Z:')
+        self.labelOZ1.move(690, 50)
+        self.textboxOZ1 = QtGui.QLineEdit(self)
+        self.textboxOZ1.resize(60, 40)
+        self.textboxOZ1.move(705, 45)
 
-      self.label_o_name = QtGui.QLabel(self)
-      self.label_o_name.setText('Choose a Name:')
-      self.label_o_name.resize(200, 20)
-      self.label_o_name.move(535, 140)
-      self.textbox_o_name = QtGui.QLineEdit(self)
-      self.textbox_o_name.resize(100, 40)
-      self.textbox_o_name.move(535, 165)
-      self.textbox_o_name.setText('object_' + str(len(self.object_dict)))
-      self.add_o_coord = QtGui.QPushButton("Add", self)
-      self.add_o_coord.move(650, 170)
-      self.add_o_coord.clicked.connect(self.add_obj)
+        self.labelOX2 = QtGui.QLabel(self)
+        self.labelOX2.move(520, 100)
+        self.labelOX2.setText('X:')
+        self.textboxOX2 = QtGui.QLineEdit(self)
+        self.textboxOX2.resize(60, 40)
+        self.textboxOX2.move(535, 95)
+        self.labelOY2 = QtGui.QLabel(self)
+        self.labelOY2.setText("Y:")
+        self.labelOY2.move(605, 100)
+        self.textboxOY2 = QtGui.QLineEdit(self)
+        self.textboxOY2.resize(60, 40)
+        self.textboxOY2.move(620, 95)
+        self.labelOZ2 = QtGui.QLabel(self)
+        self.labelOZ2.setText('Z:')
+        self.labelOZ2.move(690, 100)
+        self.textboxOZ2 = QtGui.QLineEdit(self)
+        self.textboxOZ2.resize(60, 40)
+        self.textboxOZ2.move(705, 95)
 
-      self.label_o_rem = QLabel(self)
-      self.label_o_rem.setText('Select an Object:')
-      self.label_o_rem.resize(200, 20)
-      self.label_o_rem.move(800, 25)
-      self.combo_obj = QtGui.QComboBox(self)
-      self.combo_obj.move(800, 50)
-      self.obj_rem = QtGui.QPushButton("Remove", self)
-      self.obj_rem.move(800, 100)
-      self.obj_rem.clicked.connect(self.rem_obj)
+        self.labelOName = QtGui.QLabel(self)
+        self.labelOName.setText('Choose a Name:')
+        self.labelOName.resize(200, 20)
+        self.labelOName.move(535, 140)
+        self.textboxOName = QtGui.QLineEdit(self)
+        self.textboxOName.resize(100, 40)
+        self.textboxOName.move(535, 165)
+        self.textboxOName.setText('object_' + str(len(self.objectDict)))
+        self.addOCoord = QtGui.QPushButton("Add", self)
+        self.addOCoord.move(650, 170)
+        self.addOCoord.clicked.connect(self.addObj)
 
-   def add_obj(self):
-      x1_coord = self.textbox_o_x1.text()
-      y1_coord = self.textbox_o_y1.text()
-      z1_coord = self.textbox_o_z1.text()
-      x2_coord = self.textbox_o_x2.text()
-      y2_coord = self.textbox_o_y2.text()
-      z2_coord = self.textbox_o_z2.text()
-      obj_name = str(self.textbox_o_name.text())
-      if obj_name in self.object_dict:
-         obj_name = obj_name + '(1)'
-      if x1_coord != '' and x2_coord != '' and y1_coord != '' and y2_coord != '' and z1_coord != '' and z2_coord != '':
-         self.textbox_o_x1.setText('')
-         self.textbox_o_x2.setText('')
-         self.textbox_o_y1.setText('')
-         self.textbox_o_y2.setText('')
-         self.textbox_o_z1.setText('')
-         self.textbox_o_z2.setText('')
+        self.labelORem = QLabel(self)
+        self.labelORem.setText('Select an Object:')
+        self.labelORem.resize(200, 20)
+        self.labelORem.move(800, 25)
+        self.comboObj = QtGui.QComboBox(self)
+        self.comboObj.move(800, 50)
+        self.objRem = QtGui.QPushButton("Remove", self)
+        self.objRem.move(800, 100)
+        self.objRem.clicked.connect(self.remObj)
 
-         try:
-            x1_coord = float(x1_coord)
-            x2_coord = float(x2_coord)
-            y1_coord = float(y1_coord)
-            y2_coord = float(y2_coord)
-            z1_coord = float(z1_coord)
-            z2_coord = float(z2_coord)
-            self.textbox_o_name.setText('object_' + str(len(self.object_dict)))
-         except:
-            return
+    # Adds object name as new key in objectDict pointing to a list of the
+    # two input coordinates
+    def addObj(self):
+        x1Coord = self.textboxOX1.text()
+        y1Coord = self.textboxOY1.text()
+        z1Coord = self.textboxOZ1.text()
+        x2Coord = self.textboxOX2.text()
+        y2Coord = self.textboxOY2.text()
+        z2Coord = self.textboxOZ2.text()
+        obj_name = str(self.textboxOName.text())
+        # Checks if name is valid
+        if obj_name in self.objectDict:
+            obj_name = obj_name + '(1)'
+        # Checks if all points are input
+        if x1Coord != '' and x2Coord != '' and y1Coord != '' and y2Coord != '' and z1Coord != '' and z2Coord != '':
+            self.textboxOX1.setText('')
+            self.textboxOX2.setText('')
+            self.textboxOY1.setText('')
+            self.textboxOY2.setText('')
+            self.textboxOZ1.setText('')
+            self.textboxOZ2.setText('')
+            # Checks if all points are numbers
+            try:
+                x1Coord = float(x1Coord)
+                x2Coord = float(x2Coord)
+                y1Coord = float(y1Coord)
+                y2Coord = float(y2Coord)
+                z1Coord = float(z1Coord)
+                z2Coord = float(z2Coord)
+                self.textboxOName.setText('object_' + str(len(self.objectDict)))
+            except:
+                return
+            # Checks if all points are in bounds then adds to dictionary
+            x1Bool = x1Coord >= -4 and x1Coord <= 4
+            y1Bool = y1Coord >= -4 and y1Coord <= 4
+            z1Bool = z1Coord >= 0 and z1Coord <= 8
+            x2Bool = x2Coord >= -4 and x2Coord <= 4
+            y2Bool = y2Coord >= -4 and y2Coord <= 4
+            z2Bool = z2Coord >= 0 and z2Coord <= 8
+            if x1Bool and x2Bool and y1Bool and y2Bool and z1Bool and z2Bool:
+                coord1 = (x1Coord, y1Coord, z1Coord)
+                coord2 = (x2Coord, y2Coord, z2Coord)
+                self.objectDict[obj_name] = (coord1, coord2)
+                self.comboObj.addItem(obj_name)
+        return
 
-         x1_bool = x1_coord >= -4 and x1_coord <= 4
-         y1_bool = y1_coord >= -4 and y1_coord <= 4
-         z1_bool = z1_coord >= 0 and z1_coord <= 8
-         x2_bool = x2_coord >= -4 and x2_coord <= 4
-         y2_bool = y2_coord >= -4 and y2_coord <= 4
-         z2_bool = z2_coord >= 0 and z2_coord <= 8
-         if x1_bool and x2_bool and y1_bool and y2_bool and z1_bool and z2_bool:
-            coord1 = (x1_coord, y1_coord, z1_coord)
-            coord2 = (x2_coord, y2_coord, z2_coord)
-            self.object_dict[obj_name] = (coord1, coord2)
-            self.combo_obj.addItem(obj_name)
-      return
+    # Removes selected object from objectDict
+    def remObj(self):
+        curr_obj = str(self.comboObj.currentText())
+        currIndex = self.comboObj.currentIndex()
+        self.comboObj.removeItem(currIndex)
+        self.objectDict.pop(curr_obj)
+        return
 
-   def rem_obj(self):
-      curr_obj = str(self.combo_obj.currentText())
-      curr_index = self.combo_obj.currentIndex()
-      self.combo_obj.removeItem(curr_index)
-      self.object_dict.pop(curr_obj)
-      return
+    # Creates and displayes the visualization toggle screen
+    def openToggleVis(self):
+        self.toggleViswin = ToggleVisWindow()
+        self.toggleViswin.show()
+        return
 
-   def open_toggle_vis(self):
-      self.toggle_vis_win = toggle_vis_window()
-      self.toggle_vis_win.show()
-      return
+    # Creates and displayes the log toggle screen
+    def openToggleLog(self):
+        self.toggleLogwin = ToggleLogWindow()
+        self.toggleLogwin.show()
+        return
 
-   def open_toggle_log(self):
-      self.toggle_log_win = toggle_log_window()
-      self.toggle_log_win.show()
-      return
+    # Closes window to allow backend to start flight
+    def startFlightAction(self):
+        self.close()
+        return
 
-   def start_flight_action(self):
-      self.logInfo()
-      self.close()
-      #QCoreApplication.exit(0)
-      return
+    # Logs all requested data input
+    def logInfo(self):
+        log = open("LogData.txt", 'w')
+        config = open("log_config.txt", 'r')
+        # Checks if log is on
+        line = config.readline().strip()
+        if line == "on":
+            # Checks if requested to save drones
+            line = config.readline().strip()
+            if line == "on":
+                log.write("Drones Connected:\n")
+                for drone in self.dronesConnected:
+                    log.write(drone + ' ')
+                log.write('\n\n')
+            # Checks if requested to save drone locs
+            line = config.readline().strip()
+            # Checks for frequency of drone locs
+            line = config.readline().strip()
+            # Checks if requested to save objects
+            line = config.readline().strip()
+            if line == "on":
+                log.write("Objects and outer corners:\n")
+                for obj in self.objectDict:
+                    log.write(obj + ' ')
+                    log.write(str(self.objectDict[obj][0]) + ' ')
+                    log.write(str(self.objectDict[obj][1]) + '\n')
+                log.write('\n')
+            # Checks if requested to save flight Paths
+            line = config.readline().strip()
+            if line == "on":
+                log.write("Flight Paths and Connected Drones:\n")
+                for fp in self.fpConnected:
+                    log.write(fp + ': ')
+                    for drone in self.fpConnected[fp]:
+                        log.write(drone + ' ')
+                    log.write('\n')
+                log.write('\n')
+            # checks if requested to save drone coords
+            line = config.readline().strip()
+            if line == 'on':
+                log.write("Drones and connected coordinates:\n")
+                log.write(str(self.droneCoords))
+                log.write('\n')
+            # Checks if requested to save events
+            line = config.readline().strip()
 
-   # Logs all requested data input
-   def logInfo(self):
-       log = open("LogData.txt", 'w')
-       config = open("log_config.txt", 'r')
-       # Checks if log is on
-       line = config.readline().strip()
-       if line == "on":
-           # Checks if requested to save drones
-           line = config.readline().strip()
-           if line == "on":
-               log.write("Drones Connected:\n")
-               for drone in self.drones_connected:
-                   log.write(drone + ' ')
-               log.write('\n\n')
-           # Checks if requested to save drone locs
-           line = config.readline().strip()
-           # Checks for frequency of drone locs
-           line = config.readline().strip()
-           # Checks if requested to save objects
-           line = config.readline().strip()
-           if line == "on":
-               log.write("Objects and outer corners:\n")
-               for obj in self.object_dict:
-                   log.write(obj + ' ')
-                   log.write(str(self.object_dict[obj][0]) + ' ')
-                   log.write(str(self.object_dict[obj][1]) + '\n')
-               log.write('\n')
-           # Checks if requested to save flight Paths
-           line = config.readline().strip()
-           if line == "on":
-               log.write("Flight Paths and Connected Drones:\n")
-               for fp in self.fp_connected:
-                   log.write(fp + ': ')
-                   for drone in self.fp_connected[fp]:
-                       log.write(drone + ' ')
-                   log.write('\n')
-               log.write('\n')
-           # checks if requested to save drone coords
-           line = config.readline().strip()
-           if line == 'on':
-               log.write("Drones and connected coordinates:\n")
-               log.write(str(self.drone_coords))
-               log.write('\n')
-           # Checks if requested to save events
-           line = config.readline().strip()
+# Window to allow users to toggle which elements they wish to be displayed in the visualization
+class ToggleVisWindow(QtGui.QMainWindow):
+    # Initializes all radio options for user to toggle
+    def __init__(self, parent=None):
+        super(ToggleVisWindow, self).__init__(parent)
+        self.resize(250, 185)
+        self.mainLabel = QtGui.QLabel(self)
+        self.mainLabel.setText('Toggle Elements Shown in Visualzation')
+        self.mainLabel.resize(300, 20)
+        self.setWindowTitle('Toggle Visualization')
 
-class toggle_vis_window(QtGui.QMainWindow):
-   def __init__(self, parent=None):
-      super(toggle_vis_window, self).__init__(parent)
-      self.resize(250, 185)
-      self.main_label = QtGui.QLabel(self)
-      self.main_label.setText('Toggle Elements Shown in Visualzation')
-      self.main_label.resize(300, 20)
-      self.setWindowTitle('Toggle Visualization')
+        self.visGroup = QButtonGroup()
+        self.visOn = QRadioButton('On', self)
+        self.visOn.move(20,20)
+        self.visOff = QRadioButton('Off', self)
+        self.visOff.move(60,20)
+        self.visGroup.addButton(self.visOn, 0)
+        self.visGroup.addButton(self.visOff, 0)
+        self.visLabel = QtGui.QLabel(self)
+        self.visLabel.setText('Visualization')
+        self.visLabel.resize(200,20)
+        self.visLabel.move(105, 25)
 
-      self.vis_group = QButtonGroup()
-      self.vis_on = QRadioButton('On', self)
-      self.vis_on.move(20,20)
-      self.vis_off = QRadioButton('Off', self)
-      self.vis_off.move(60,20)
-      self.vis_group.addButton(self.vis_on, 0)
-      self.vis_group.addButton(self.vis_off, 0)
-      self.vis_label = QtGui.QLabel(self)
-      self.vis_label.setText('Visualization')
-      self.vis_label.resize(200,20)
-      self.vis_label.move(105, 25)
+        self.droneLocGroup = QButtonGroup()
+        self.droneLocOn = QRadioButton('On', self)
+        self.droneLocOn.move(20,40)
+        self.droneLocOff = QRadioButton('Off', self)
+        self.droneLocOff.move(60,40)
+        self.droneLocOff.setChecked(True)
+        self.droneLocGroup.addButton(self.droneLocOn, 0)
+        self.droneLocGroup.addButton(self.droneLocOff, 0)
+        self.droneLocLabel = QtGui.QLabel(self)
+        self.droneLocLabel.setText('Drone Locations')
+        self.droneLocLabel.resize(200,20)
+        self.droneLocLabel.move(105, 45)
 
-      self.drone_loc_group = QButtonGroup()
-      self.drone_loc_on = QRadioButton('On', self)
-      self.drone_loc_on.move(20,40)
-      self.drone_loc_off = QRadioButton('Off', self)
-      self.drone_loc_off.move(60,40)
-      self.drone_loc_off.setChecked(True)
-      self.drone_loc_group.addButton(self.drone_loc_on, 0)
-      self.drone_loc_group.addButton(self.drone_loc_off, 0)
-      self.drone_loc_label = QtGui.QLabel(self)
-      self.drone_loc_label.setText('Drone Locations')
-      self.drone_loc_label.resize(200,20)
-      self.drone_loc_label.move(105, 45)
+        self.dronePathGroup = QButtonGroup()
+        self.dronePathOn = QRadioButton('On', self)
+        self.dronePathOn.move(20,60)
+        self.dronePathOff = QRadioButton('Off', self)
+        self.dronePathOff.move(60,60)
+        self.dronePathOff.setChecked(True)
+        self.dronePathGroup.addButton(self.dronePathOn, 0)
+        self.dronePathGroup.addButton(self.dronePathOff, 0)
+        self.dronePathLabel = QtGui.QLabel(self)
+        self.dronePathLabel.setText('Drone Paths Expected')
+        self.dronePathLabel.resize(200,20)
+        self.dronePathLabel.move(105, 65)
 
-      self.drone_path_group = QButtonGroup()
-      self.drone_path_on = QRadioButton('On', self)
-      self.drone_path_on.move(20,60)
-      self.drone_path_off = QRadioButton('Off', self)
-      self.drone_path_off.move(60,60)
-      self.drone_path_off.setChecked(True)
-      self.drone_path_group.addButton(self.drone_path_on, 0)
-      self.drone_path_group.addButton(self.drone_path_off, 0)
-      self.drone_path_label = QtGui.QLabel(self)
-      self.drone_path_label.setText('Drone Paths Expected')
-      self.drone_path_label.resize(200,20)
-      self.drone_path_label.move(105, 65)
+        self.droneFlownGroup = QButtonGroup()
+        self.droneFlownOn = QRadioButton('On', self)
+        self.droneFlownOn.move(20,80)
+        self.droneFlownOff = QRadioButton('Off', self)
+        self.droneFlownOff.move(60,80)
+        self.droneFlownOff.setChecked(True)
+        self.droneFlownGroup.addButton(self.droneFlownOn, 0)
+        self.droneFlownGroup.addButton(self.droneFlownOff, 0)
+        self.droneFlownLabel = QtGui.QLabel(self)
+        self.droneFlownLabel.setText('Drone Paths Flown')
+        self.droneFlownLabel.resize(200,20)
+        self.droneFlownLabel.move(105, 85)
 
-      self.drone_flown_group = QButtonGroup()
-      self.drone_flown_on = QRadioButton('On', self)
-      self.drone_flown_on.move(20,80)
-      self.drone_flown_off = QRadioButton('Off', self)
-      self.drone_flown_off.move(60,80)
-      self.drone_flown_off.setChecked(True)
-      self.drone_flown_group.addButton(self.drone_flown_on, 0)
-      self.drone_flown_group.addButton(self.drone_flown_off, 0)
-      self.drone_flown_label = QtGui.QLabel(self)
-      self.drone_flown_label.setText('Drone Paths Flown')
-      self.drone_flown_label.resize(200,20)
-      self.drone_flown_label.move(105, 85)
+        self.sensorGroup = QButtonGroup()
+        self.sensorOn = QRadioButton('On', self)
+        self.sensorOn.move(20,100)
+        self.sensorOff = QRadioButton('Off', self)
+        self.sensorOff.move(60,100)
+        self.sensorOff.setChecked(True)
+        self.sensorGroup.addButton(self.sensorOn, 0)
+        self.sensorGroup.addButton(self.sensorOff, 0)
+        self.sensorLabel = QtGui.QLabel(self)
+        self.sensorLabel.setText('Sensors')
+        self.sensorLabel.resize(200,20)
+        self.sensorLabel.move(105, 105)
 
-      self.sensor_group = QButtonGroup()
-      self.sensor_on = QRadioButton('On', self)
-      self.sensor_on.move(20,100)
-      self.sensor_off = QRadioButton('Off', self)
-      self.sensor_off.move(60,100)
-      self.sensor_off.setChecked(True)
-      self.sensor_group.addButton(self.sensor_on, 0)
-      self.sensor_group.addButton(self.sensor_off, 0)
-      self.sensor_label = QtGui.QLabel(self)
-      self.sensor_label.setText('Sensors')
-      self.sensor_label.resize(200,20)
-      self.sensor_label.move(105, 105)
+        self.objectsGroup = QButtonGroup()
+        self.objectsOn = QRadioButton('On', self)
+        self.objectsOn.move(20,120)
+        self.objectsOff = QRadioButton('Off', self)
+        self.objectsOff.move(60,120)
+        self.objectsOff.setChecked(True)
+        self.objectsGroup.addButton(self.objectsOn, 0)
+        self.objectsGroup.addButton(self.objectsOff, 0)
+        self.objectsLabel = QtGui.QLabel(self)
+        self.objectsLabel.setText('Objects')
+        self.objectsLabel.resize(200,20)
+        self.objectsLabel.move(105, 125)
+        self.save = QPushButton('save', self)
+        self.save.move(130, 150)
+        self.save.clicked.connect(self.saveVisConfig)
+        self.openVisConfig()
 
-      self.objects_group = QButtonGroup()
-      self.objects_on = QRadioButton('On', self)
-      self.objects_on.move(20,120)
-      self.objects_off = QRadioButton('Off', self)
-      self.objects_off.move(60,120)
-      self.objects_off.setChecked(True)
-      self.objects_group.addButton(self.objects_on, 0)
-      self.objects_group.addButton(self.objects_off, 0)
-      self.objects_label = QtGui.QLabel(self)
-      self.objects_label.setText('Objects')
-      self.objects_label.resize(200,20)
-      self.objects_label.move(105, 125)
-      self.save = QPushButton('save', self)
-      self.save.move(130, 150)
-      self.save.clicked.connect(self.save_vis_config)
-      self.open_vis_config()
+    # toggles radio buttons from vis_config
+    def openVisConfig(self):
+        config = open('vis_config.txt', 'r')
+        line = config.readline().strip()
+        if line == 'on':
+            self.visOn.setChecked(True)
+        else:
+            self.visOff.setChecked(True)
+        line = config.readline().strip()
+        if line == 'on':
+            self.droneLocOn.setChecked(True)
+        else:
+            self.droneLocOff.setChecked(True)
+        line = config.readline().strip()
+        if line == 'on':
+            self.dronePathOn.setChecked(True)
+        else:
+            self.dronePathOff.setChecked(True)
+        line = config.readline().strip()
+        if line == 'on':
+            self.droneFlownOn.setChecked(True)
+        else:
+            self.droneFlownOff.setChecked(True)
+        line = config.readline().strip()
+        if line == 'on':
+            self.sensorOn.setChecked(True)
+        else:
+            self.sensorOff.setChecked(True)
+        line = config.readline().strip()
+        if line == 'on':
+            self.objectsOn.setChecked(True)
+        else:
+            self.objectsOff.setChecked(True)
+        config.close()
+        return
 
-   def open_vis_config(self):
-      config = open('vis_config.txt', 'r')
-      line = config.readline().strip()
-      if line == 'on':
-         self.vis_on.setChecked(True)
-      else:
-         self.vis_off.setChecked(True)
-      line = config.readline().strip()
-      if line == 'on':
-         self.drone_loc_on.setChecked(True)
-      else:
-         self.drone_loc_off.setChecked(True)
-      line = config.readline().strip()
-      if line == 'on':
-         self.drone_path_on.setChecked(True)
-      else:
-         self.drone_path_off.setChecked(True)
-      line = config.readline().strip()
-      if line == 'on':
-         self.drone_flown_on.setChecked(True)
-      else:
-         self.drone_flown_off.setChecked(True)
-      line = config.readline().strip()
-      if line == 'on':
-         self.sensor_on.setChecked(True)
-      else:
-         self.sensor_off.setChecked(True)
-      line = config.readline().strip()
-      if line == 'on':
-         self.objects_on.setChecked(True)
-      else:
-         self.objects_off.setChecked(True)
-      config.close()
-      return
+    # Saves input into vis config
+    def saveVisConfig(self):
+        config = open('vis_config.txt', 'w')
+        if self.visOn.isChecked():
+            config.write('on\n')
+        else:
+            config.write('off\n')
+        if self.droneLocOn.isChecked():
+            config.write('on\n')
+        else:
+            config.write('off\n')
+        if self.dronePathOn.isChecked():
+            config.write('on\n')
+        else:
+            config.write('off\n')
+        if self.droneFlownOn.isChecked():
+            config.write('on\n')
+        else:
+            config.write('off\n')
+        if self.sensorOn.isChecked():
+            config.write('on\n')
+        else:
+            config.write('off\n')
+        if self.objectsOn.isChecked():
+            config.write('on\n')
+        else:
+            config.write('off\n')
+        config.close()
+        return
 
-   def save_vis_config(self):
-      config = open('vis_config.txt', 'w')
-      if self.vis_on.isChecked():
-         config.write('on\n')
-      else:
-         config.write('off\n')
-      if self.drone_loc_on.isChecked():
-         config.write('on\n')
-      else:
-         config.write('off\n')
-      if self.drone_path_on.isChecked():
-         config.write('on\n')
-      else:
-         config.write('off\n')
-      if self.drone_flown_on.isChecked():
-         config.write('on\n')
-      else:
-         config.write('off\n')
-      if self.sensor_on.isChecked():
-         config.write('on\n')
-      else:
-         config.write('off\n')
-      if self.objects_on.isChecked():
-         config.write('on\n')
-      else:
-         config.write('off\n')
-      config.close()
-      return
+# Window to toggle what the user wishes to be logged
+class ToggleLogWindow(QtGui.QMainWindow):
+    def __init__(self, parent=None):
+        super(ToggleLogWindow, self).__init__(parent)
+        self.resize(250, 230)
+        self.mainLabel = QtGui.QLabel(self)
+        self.mainLabel.setText('Toggle Elements Logged')
+        self.mainLabel.resize(300, 20)
+        self.setWindowTitle('Toggle Log File')
 
-class toggle_log_window(QtGui.QMainWindow):
-   def __init__(self, parent=None):
-      super(toggle_log_window, self).__init__(parent)
-      self.resize(250, 230)
-      self.main_label = QtGui.QLabel(self)
-      self.main_label.setText('Toggle Elements Logged')
-      self.main_label.resize(300, 20)
-      self.setWindowTitle('Toggle Log File')
+        self.logGroup = QButtonGroup()
+        self.logOn = QRadioButton('On', self)
+        self.logOn.move(20,20)
+        self.logOff = QRadioButton('Off', self)
+        self.logOff.move(60,20)
+        self.logOff.setChecked(True)
+        self.logGroup.addButton(self.logOn, 0)
+        self.logGroup.addButton(self.logOff, 0)
+        self.logLabel = QtGui.QLabel(self)
+        self.logLabel.setText('Logging')
+        self.logLabel.resize(200,20)
+        self.logLabel.move(105, 25)
 
-      self.log_group = QButtonGroup()
-      self.log_on = QRadioButton('On', self)
-      self.log_on.move(20,20)
-      self.log_off = QRadioButton('Off', self)
-      self.log_off.move(60,20)
-      self.log_off.setChecked(True)
-      self.log_group.addButton(self.log_on, 0)
-      self.log_group.addButton(self.log_off, 0)
-      self.log_label = QtGui.QLabel(self)
-      self.log_label.setText('Logging')
-      self.log_label.resize(200,20)
-      self.log_label.move(105, 25)
+        self.droneGroup = QButtonGroup()
+        self.droneOn = QRadioButton('On', self)
+        self.droneOn.move(20,40)
+        self.droneOff = QRadioButton('Off', self)
+        self.droneOff.move(60,40)
+        self.droneOff.setChecked(True)
+        self.droneGroup.addButton(self.droneOn, 0)
+        self.droneGroup.addButton(self.droneOff, 0)
+        self.droneLabel = QtGui.QLabel(self)
+        self.droneLabel.setText('Drones Flown')
+        self.droneLabel.resize(200,20)
+        self.droneLabel.move(105, 45)
 
-      self.drone_group = QButtonGroup()
-      self.drone_on = QRadioButton('On', self)
-      self.drone_on.move(20,40)
-      self.drone_off = QRadioButton('Off', self)
-      self.drone_off.move(60,40)
-      self.drone_off.setChecked(True)
-      self.drone_group.addButton(self.drone_on, 0)
-      self.drone_group.addButton(self.drone_off, 0)
-      self.drone_label = QtGui.QLabel(self)
-      self.drone_label.setText('Drones Flown')
-      self.drone_label.resize(200,20)
-      self.drone_label.move(105, 45)
+        self.droneLocGroup = QButtonGroup()
+        self.droneLocOn = QRadioButton('On', self)
+        self.droneLocOn.move(20,60)
+        self.droneLocOff = QRadioButton('Off', self)
+        self.droneLocOff.move(60,60)
+        self.droneLocOff.setChecked(True)
+        self.droneLocGroup.addButton(self.droneLocOn, 0)
+        self.droneLocGroup.addButton(self.droneLocOff, 0)
+        self.droneLocLabel = QtGui.QLabel(self)
+        self.droneLocLabel.setText('Drone Locations')
+        self.droneLocLabel.resize(200,20)
+        self.droneLocLabel.move(105, 65)
 
-      self.drone_loc_group = QButtonGroup()
-      self.drone_loc_on = QRadioButton('On', self)
-      self.drone_loc_on.move(20,60)
-      self.drone_loc_off = QRadioButton('Off', self)
-      self.drone_loc_off.move(60,60)
-      self.drone_loc_off.setChecked(True)
-      self.drone_loc_group.addButton(self.drone_loc_on, 0)
-      self.drone_loc_group.addButton(self.drone_loc_off, 0)
-      self.drone_loc_label = QtGui.QLabel(self)
-      self.drone_loc_label.setText('Drone Locations')
-      self.drone_loc_label.resize(200,20)
-      self.drone_loc_label.move(105, 65)
+        self.droneFreqTextbox = QLineEdit(self)
+        self.droneFreqTextbox.move(20, 85)
+        self.droneFreqTextbox.resize(50, 30)
+        self.droneFreqLabel = QLabel(self)
+        self.droneFreqLabel.setText("Frequency (in seconds)")
+        self.droneFreqLabel.resize(200,20)
+        self.droneFreqLabel.move(80, 90)
 
-      self.drone_freq_textbox = QLineEdit(self)
-      self.drone_freq_textbox.move(20, 85)
-      self.drone_freq_textbox.resize(50, 30)
-      self.drone_freq_label = QLabel(self)
-      self.drone_freq_label.setText("Frequency (in seconds)")
-      self.drone_freq_label.resize(200,20)
-      self.drone_freq_label.move(80, 90)
+        self.objectsGroup = QButtonGroup()
+        self.objectsOn = QRadioButton('On', self)
+        self.objectsOn.move(20,110)
+        self.objectsOff = QRadioButton('Off', self)
+        self.objectsOff.move(60,110)
+        self.objectsOff.setChecked(True)
+        self.objectsGroup.addButton(self.objectsOn, 0)
+        self.objectsGroup.addButton(self.objectsOff, 0)
+        self.objectsLabel = QtGui.QLabel(self)
+        self.objectsLabel.setText('Objects')
+        self.objectsLabel.resize(200,20)
+        self.objectsLabel.move(105, 115)
 
-      self.objects_group = QButtonGroup()
-      self.objects_on = QRadioButton('On', self)
-      self.objects_on.move(20,110)
-      self.objects_off = QRadioButton('Off', self)
-      self.objects_off.move(60,110)
-      self.objects_off.setChecked(True)
-      self.objects_group.addButton(self.objects_on, 0)
-      self.objects_group.addButton(self.objects_off, 0)
-      self.objects_label = QtGui.QLabel(self)
-      self.objects_label.setText('Objects')
-      self.objects_label.resize(200,20)
-      self.objects_label.move(105, 115)
+        self.fpGroup = QButtonGroup()
+        self.fpOn = QRadioButton('On', self)
+        self.fpOn.move(20,130)
+        self.fpOff = QRadioButton('Off', self)
+        self.fpOff.move(60,130)
+        self.fpOff.setChecked(True)
+        self.fpGroup.addButton(self.fpOn, 0)
+        self.fpGroup.addButton(self.fpOff, 0)
+        self.fpLabel = QtGui.QLabel(self)
+        self.fpLabel.setText('Flight Paths')
+        self.fpLabel.resize(200,20)
+        self.fpLabel.move(105, 135)
 
-      self.fp_group = QButtonGroup()
-      self.fp_on = QRadioButton('On', self)
-      self.fp_on.move(20,130)
-      self.fp_off = QRadioButton('Off', self)
-      self.fp_off.move(60,130)
-      self.fp_off.setChecked(True)
-      self.fp_group.addButton(self.fp_on, 0)
-      self.fp_group.addButton(self.fp_off, 0)
-      self.fp_label = QtGui.QLabel(self)
-      self.fp_label.setText('Flight Paths')
-      self.fp_label.resize(200,20)
-      self.fp_label.move(105, 135)
+        self.coordGroup = QButtonGroup()
+        self.coordOn = QRadioButton('On', self)
+        self.coordOn.move(20,150)
+        self.coordOff = QRadioButton('Off', self)
+        self.coordOff.move(60,150)
+        self.coordOff.setChecked(True)
+        self.coordGroup.addButton(self.coordOn, 0)
+        self.coordGroup.addButton(self.coordOff, 0)
+        self.coordLabel = QtGui.QLabel(self)
+        self.coordLabel.setText('Coordinates')
+        self.coordLabel.resize(200,20)
+        self.coordLabel.move(105, 155)
 
-      self.coord_group = QButtonGroup()
-      self.coord_on = QRadioButton('On', self)
-      self.coord_on.move(20,150)
-      self.coord_off = QRadioButton('Off', self)
-      self.coord_off.move(60,150)
-      self.coord_off.setChecked(True)
-      self.coord_group.addButton(self.coord_on, 0)
-      self.coord_group.addButton(self.coord_off, 0)
-      self.coord_label = QtGui.QLabel(self)
-      self.coord_label.setText('Coordinates')
-      self.coord_label.resize(200,20)
-      self.coord_label.move(105, 155)
+        self.eventsGroup = QButtonGroup()
+        self.eventsOn = QRadioButton('On', self)
+        self.eventsOn.move(20,170)
+        self.eventsOff = QRadioButton('Off', self)
+        self.eventsOff.move(60,170)
+        self.eventsOff.setChecked(True)
+        self.eventsGroup.addButton(self.eventsOn, 0)
+        self.eventsGroup.addButton(self.eventsOff, 0)
+        self.eventsLabel = QtGui.QLabel(self)
+        self.eventsLabel.setText('Major Events')
+        self.eventsLabel.resize(200,20)
+        self.eventsLabel.move(105, 175)
 
-      self.events_group = QButtonGroup()
-      self.events_on = QRadioButton('On', self)
-      self.events_on.move(20,170)
-      self.events_off = QRadioButton('Off', self)
-      self.events_off.move(60,170)
-      self.events_off.setChecked(True)
-      self.events_group.addButton(self.events_on, 0)
-      self.events_group.addButton(self.events_off, 0)
-      self.events_label = QtGui.QLabel(self)
-      self.events_label.setText('Major Events')
-      self.events_label.resize(200,20)
-      self.events_label.move(105, 175)
+        self.save = QPushButton('save', self)
+        self.save.move(130, 200)
+        self.save.clicked.connect(self.saveLogConfig)
+        self.openLogConfig()
 
-      self.save = QPushButton('save', self)
-      self.save.move(130, 200)
-      self.save.clicked.connect(self.save_log_config)
-      self.open_log_config()
+    # Configures radio buttons from log_config
+    def openLogConfig(self):
+        config = open('log_config.txt', 'r')
+        line = config.readline().strip()
+        if line == 'on':
+            self.logOn.setChecked(True)
+        else:
+            self.logOff.setChecked(True)
+        line = config.readline().strip()
+        if line == 'on':
+            self.droneOn.setChecked(True)
+        else:
+            self.droneOff.setChecked(True)
+        line = config.readline().strip()
+        if line == 'on':
+            self.droneLocOn.setChecked(True)
+        else:
+            self.droneLocOff.setChecked(True)
+        line = config.readline().strip()
+        self.droneFreqTextbox.setText(line)
+        line = config.readline().strip()
+        if line == 'on':
+            self.objectsOn.setChecked(True)
+        else:
+            self.objectsOff.setChecked(True)
+        line = config.readline().strip()
+        if line == 'on':
+            self.fpOn.setChecked(True)
+        else:
+            self.fpOff.setChecked(True)
+        line = config.readline().strip()
+        if line == 'on':
+            self.coordOn.setChecked(True)
+        else:
+            self.coordOff.setChecked(True)
+        line = config.readline().strip()
+        if line == 'on':
+            self.eventsOn.setChecked(True)
+        else:
+            self.eventsOff.setChecked(True)
+        config.close()
+        return
 
-   def open_log_config(self):
-      config = open('log_config.txt', 'r')
-      line = config.readline().strip()
-      if line == 'on':
-         self.log_on.setChecked(True)
-      else:
-         self.log_off.setChecked(True)
-      line = config.readline().strip()
-      if line == 'on':
-         self.drone_on.setChecked(True)
-      else:
-         self.drone_off.setChecked(True)
-      line = config.readline().strip()
-      if line == 'on':
-         self.drone_loc_on.setChecked(True)
-      else:
-         self.drone_loc_off.setChecked(True)
-      line = config.readline().strip()
-      self.drone_freq_textbox.setText(line)
-      line = config.readline().strip()
-      if line == 'on':
-         self.objects_on.setChecked(True)
-      else:
-         self.objects_off.setChecked(True)
-      line = config.readline().strip()
-      if line == 'on':
-         self.fp_on.setChecked(True)
-      else:
-         self.fp_off.setChecked(True)
-      line = config.readline().strip()
-      if line == 'on':
-         self.coord_on.setChecked(True)
-      else:
-         self.coord_off.setChecked(True)
-      line = config.readline().strip()
-      if line == 'on':
-         self.events_on.setChecked(True)
-      else:
-         self.events_off.setChecked(True)
-      config.close()
-      return
+    # Saves selected input into log file config
+    def saveLogConfig(self):
+        config = open('log_config.txt', 'w')
+        if self.logOn.isChecked():
+            config.write('on\n')
+        else:
+            config.write('off\n')
+        if self.droneOn.isChecked():
+            config.write('on\n')
+        else:
+            config.write('off\n')
+        if self.droneLocOn.isChecked():
+            config.write('on\n')
+        else:
+            config.write('off\n')
+        freq = self.droneFreqTextbox.text()
+        try:
+            freq = float(freq)
+        except:
+            freq = 0.0;
+        config.write(str(freq) + '\n')
+        if self.objectsOn.isChecked():
+            config.write('on\n')
+        else:
+            config.write('off\n')
+        if self.fpOn.isChecked():
+            config.write('on\n')
+        else:
+            config.write('off\n')
+        if self.coordOn.isChecked():
+            config.write('on\n')
+        else:
+            config.write('off\n')
+        if self.eventsOn.isChecked():
+            config.write('on\n')
+        else:
+            config.write('off\n')
+        config.close()
+        return
 
-   def save_log_config(self):
-      config = open('log_config.txt', 'w')
-      if self.log_on.isChecked():
-         config.write('on\n')
-      else:
-         config.write('off\n')
-      if self.drone_on.isChecked():
-         config.write('on\n')
-      else:
-         config.write('off\n')
-      if self.drone_loc_on.isChecked():
-         config.write('on\n')
-      else:
-         config.write('off\n')
-      freq = self.drone_freq_textbox.text()
-      try:
-         freq = float(freq)
-      except:
-         freq = 0.0;
-      config.write(str(freq) + '\n')
-      if self.objects_on.isChecked():
-         config.write('on\n')
-      else:
-         config.write('off\n')
-      if self.fp_on.isChecked():
-         config.write('on\n')
-      else:
-         config.write('off\n')
-      if self.coord_on.isChecked():
-         config.write('on\n')
-      else:
-         config.write('off\n')
-      if self.events_on.isChecked():
-         config.write('on\n')
-      else:
-         config.write('off\n')
-      config.close()
-      return
-
+# Text are to view major events and stop button to initate the flight ending
 class Monitor(QMainWindow):
     def __init__(self, parent = None):
         # Set up window for console
