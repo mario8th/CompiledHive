@@ -72,7 +72,8 @@ class Siminfo:
             lengthvect = math.sqrt(lengthvect)
 
             for xyzcount, xyz in enumerate(newvect):
-                newvect[xyzcount] = xyz/lengthvect
+                if lengthvect >= 0.000000001:
+                    newvect[xyzcount] = xyz/lengthvect
 
             tempvectors.append(newvect)
 
@@ -88,7 +89,6 @@ class Siminfo:
                 #Check if drone is within movedist of destination
 
                 newvect = ([ self.dest[dronecount][0] - drone[0] ,self.dest[dronecount][1] - drone[1] ,self.dest[dronecount][2] - drone[2]])
-
 
                 lengthvect = 0.0
                 for xyz in newvect:
@@ -145,6 +145,7 @@ def simListener():
     rate = rospy.Rate(REFRESHRATE)
     while not rospy.is_shutdown():
         simdata.update()
+        print("C: " + str(simdata.currentlocs))
         pub.publish(str(simdata.currentlocs))
         rate.sleep()
 

@@ -23,7 +23,7 @@ class WidgetGallery(QtGui.QDialog):
         droneCount = 1.0
         # Starts initial drone at (1,1,0), adds .3 to x value for every additional drone
         for drone in dronesConnected:
-            dronesConnected[drone] = [(droneCount, 1, 0)] + dronesConnected[drone]
+            dronesConnected[drone] = [[droneCount, 1, 0]] + dronesConnected[drone]
             droneCount = round(droneCount + .3,2)
         # Creates vis toggle list
         visToggle = []
@@ -492,12 +492,12 @@ class WidgetObs(WidgetGallery, QtGui.QDialog):
             message.setStandardButtons(QMessageBox.Ok)
             retval = message.exec_()
             return
-        x1Bool = x1Coord >= 0 and x1Coord <= 3.4
-        y1Bool = y1Coord >= 0 and y1Coord <= 4.25
-        z1Bool = z1Coord >= 0 and z1Coord <= 2.43
-        x2Bool = x2Coord >= 0 and x2Coord <= 3.4
-        y2Bool = y2Coord >= 0 and y2Coord <= 4.25
-        z2Bool = z2Coord >= 0 and z2Coord <= 2.43
+        x1Bool = x1Coord >= -4 and x1Coord <= 4
+        y1Bool = y1Coord >= -4 and y1Coord <= 4
+        z1Bool = z1Coord >= 0 and z1Coord <= 8
+        x2Bool = x2Coord >= -4 and x2Coord <= 4
+        y2Bool = y2Coord >= -4 and y2Coord <= 4
+        z2Bool = z2Coord >= 0 and z2Coord <= 8
         if x1Bool and x2Bool and y1Bool and y2Bool and z1Bool and z2Bool:
             objectDict.update({name : [[x1Coord , y1Coord ,z1Coord],[x2Coord , y2Coord ,z2Coord ]]})
             item = QStandardItem(name)
@@ -699,9 +699,9 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
             message.setStandardButtons(QMessageBox.Ok)
             retval = message.exec_()
             return False
-        x1Bool = x1Coord >= 0 and x1Coord <= 3.4
-        y1Bool = y1Coord >= 0 and y1Coord <= 4.25
-        z1Bool = z1Coord >= 0 and z1Coord <= 2.43
+        x1Bool = x1Coord >= -4 and x1Coord <= 4
+        y1Bool = y1Coord >= -4 and y1Coord <= 4
+        z1Bool = z1Coord >= 0 and z1Coord <= 8
         if x1Bool and y1Bool and z1Bool:
             #WidgetGallery update
             droneName = str(self.droneName.text())
