@@ -41,7 +41,7 @@ from std_msgs.msg import String
 import ast
 import math
 
-REFRESHRATE = 2
+REFRESHRATE = 2.5
 
 #Class to hold math info for simulator
 class Siminfo:

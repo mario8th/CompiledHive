@@ -20,6 +20,8 @@ objectDict = {}
 class WidgetGallery(QtGui.QDialog):
     count = 0
     def getData(self):
+        global dronesConnected, droneIDs, fpConnected, objectDict
+        print fpConnected
         droneCount = 1.0
         # Starts initial drone at (1,1,0), adds .3 to x value for every additional drone
         for drone in dronesConnected:
@@ -400,7 +402,8 @@ class WidgetGallery(QtGui.QDialog):
         print droneIDs
         print fpConnected
         print objectDict
-        #os.remove(self.fileNames)
+        fh = open(self.fileNames, "w")
+        fh.close()
         self.close()
 
     def openVis(self):
@@ -1113,10 +1116,17 @@ class Monitor(QMainWindow):
         self.endButtn.clicked.connect(self.endFlight)
 
     def endFlight(self):
-        print("Starting to end the flight crapidoodle II: Electric Boogaloo")
+        print("Starting to end the flight II: Electric Boogaloo")
         # publish
 #==============================================================================
+def launchGui():
+    global start
+    app = QtGui.QApplication(sys.argv)
+    start = WidgetGallery()
+    start.show()
+    app.exec_()
 
+    return start.getData()
 if __name__ == '__main__':
 
     import sys

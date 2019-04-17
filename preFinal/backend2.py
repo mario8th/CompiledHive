@@ -8,8 +8,8 @@ from gui_ver2 import *
 import math
 import importlib
 
-WARNDRONERADIUS = 0.1
-STOPDRONERADIUS = 0.05
+WARNDRONERADIUS = 0.2
+STOPDRONERADIUS = 0.1
 
 ERRORMARGIN = 0.0
 
@@ -32,10 +32,12 @@ class BackendData:
         self.obstDict = obstDict
         self.sensors = [[4.0,-4.0,0.0], [-4.0,-4.0,0.0], [4.0,4.0,0.0], [-4.0,4.0,0.0], [4.0,-4.0,8.0], [-4.0,-4.0,8.0], [4.0,4.0,8.0], [-4.0,4.0,8.0]]
 
+        # Config files
+        self.visConfig = visConfig
+        self.logConfig = logConfig
 
         # Tracks major error occurence
         self.quitBool = False
-
 
         # Start locations
         self.startLocations = []
@@ -70,13 +72,61 @@ class BackendData:
 
     # Checks if Drones are within collision radius
     def checkDronesClose(self):
-        pass
+        for droneCount1, drone1 in enumerate(self.currentLocations):
+            for droneCount2, drone2 in enumerate(self.currentLocations):
+                if(droneCount1 < droneCount2):
+                    #Compare distances
+                    dist = (((drone1[0] - drone2[0]) * (drone1[0] - drone2[0])) +
+                            ((drone1[1] - drone2[1]) * (drone1[1] - drone2[1])) +
+                            ((drone1[2] - drone2[2]) * (drone1[2] - drone2[2])))
 
+                    dist = math.sqrt(dist)
+
+                    #Check for potential drone collision
+                    if(dist < STOPDRONERADIUS):
+                        self.activateQuitBool()
+                        logString = "Stopping: "
+                        logString += "Drone " + str(self.fullDroneList[droneCount1]) + " and Drone " + str(self.fullDroneList[droneCount2])
+                        logString += " within stop radius"
+                        self.toLog('E', logString)
+                    elif(dist < WARNDRONERADIUS):
+                        logString = "Caution: "
+                        logString += "Drone " + str(self.fullDroneList[droneCount1]) + " and Drone " + str(self.fullDroneList[droneCount2])
+                        logString += " within warning radius"
+                        self.toLog('E', logString)
+
+    # Checks if a drone is within an obstacle
     def checkObstacleCollide(self):
-        pass
+        errorFlag = False
 
+        for obstacle in self.obstDict:
+            for drone in self.currentLocations:
+                if(pointWithinRectangle(drone, self.obstDict[obstacle][0], self.obstDict[obstacle][1])):
+                    logString = str(drone) + ' in obstacle ' + str(obstacle)
+                    self.toLog('E', logString)
+
+    # Checks if drone is out of bounds
     def checkOutOfBounds(self):
-        pass
+        #Find 2 opposite Sensors
+        sensor1 = self.sensors[0]
+        sensor2 = self.sensors[-1]
+
+        for sensor in self.sensors:
+            if(sensor1[0] != sensor[0] and sensor1[1] != sensor[1] and sensor1[2] != sensor[2]):
+                sensor2 = sensor
+
+        # Feed each drone into pointWithinRectangle
+        errorFlag = False
+        for drone in self.currentLocations:
+            errorFlag = errorFlag or not pointWithinRectangle(drone, sensor1, sensor2)
+
+        # Drone was out of bounds
+        if(errorFlag):
+            self.activateQuitBool()
+            #Publish to consolePub about flight ending because a drone flew out of bounds
+            logString = "Drone flew out of bounds"
+            self.toLog('E', logString)
+
 
     # Activates wuit bool and sets all drones to land
     def activateQuitBool(self):
@@ -118,9 +168,6 @@ class BackendData:
                         self.destIndexDict[drone] = self.destIndexDict[drone]
                     else:
                         self.destIndexDict[drone] = self.destIndexDict[drone] + 1
-                print drone
-                print self.destDict[drone]
-                print self.destIndexDict[drone]
                 pointDestDict[drone] = self.destDict[drone][self.destIndexDict[drone]]
 
         return pointDestDict
@@ -135,6 +182,7 @@ class BackendData:
                 paramLocations.append(self.currentLocations[self.fullDroneList.index(drone)])
 
             # Send list to function and recieve new destinations
+            print path
             newDests = self.importDict[path].flightPath(paramLocations)
             # Reassemble lists into single dictionary
             for droneCount, drone in enumerate(newDests):
@@ -142,6 +190,25 @@ class BackendData:
 
         return pathDestDict
 
+
+    def toLog(self, commandLetter, logString):
+        # Take in command + string
+        # Test command against Config
+        # if logging that command, log
+
+        print logString
+
+        # Test if logging
+        if(self.logConfig[0]):
+            # Open File to log
+            log = open("LogData.txt", 'w')
+            # Test for events and logging config for events
+            if(commandLetter == 'E' and self.logConfig[7]):
+                log.write(logString)
+            elif(commandLetter == 'L' and self.logConfig[2]):
+                log.write(logString)
+
+            log.close()
 
 # Tests if point is within rectangle bounded by 2 opposite corners
 def pointWithinRectangle(point, corner1, corner2):
@@ -167,7 +234,7 @@ def receivedLocations(data):
     global backend, visualizationPub, destPub, consolePub
     # Update currentlocs in backend
     backend.currentLocations = ast.literal_eval(data.data)
-    print backend.currentLocations
+    backend.toLog('L', str(backend.currentLocations))
 
     # Forward drone locations to vis
     forwardDroneLocs()
@@ -231,17 +298,12 @@ def runBackend(fullDroneList, destDict, pathDict, obstDict, visConfig, logConfig
     rospy.spin()
 
 
-def launchGui():
-    app = QtGui.QApplication(sys.argv)
-    gui = WidgetGallery()
-    gui.show()
-    app.exec_()
 
-    return gui.getData()
 
 def main():
     # Launch GUI to gather user input
     flightData = launchGui()
+    print flightData
 
     # Parse user input
     fullDroneList = []
@@ -252,25 +314,14 @@ def main():
     for path in flightData[2]:
         fullDroneList.extend(flightData[2][path])
 
-    #runBackend(fullDroneList, flightData[0], flightData[2], flightData[3], flightData[4], flightData[5])
+    runBackend(fullDroneList, flightData[0], flightData[2], flightData[3], flightData[4], flightData[5])
 
-    runBackend([2,1,3,4],
-    { 2:[[2.0,-2.0,3.0],[-2.0,-2.0,3.0],[-2.0,2.0,3.0],[2.0,2.0,3.0],[1.0,1.0,1.0]],1:[[-4.0,-4.0,5.0],[4.0,-4.0,5.0],[4.0,4.0,5.0],[-4.0,4.0,5.0],[1.0,1.0,1.0]]},
+    '''runBackend([2,1,3,4],
+    { 2:[[2.0,-2.0,0.0],[2.0,-2.0,3.0],[-2.0,-2.0,3.0],[-2.0,2.0,3.0],[2.0,2.0,3.0],[1.0,1.0,1.0]],1:[[-4.0,-4.0,0.0],[-4.0,-4.0,5.0],[4.0,-4.0,5.0],[4.0,4.0,5.0],[-4.0,4.0,5.0],[1.0,1.0,1.0]]},
     {"loopout": [3,4]},
     {'object_0': ((1.0, 2.0, 1.0), (3.0, 3.0, 3.0))},
     [],
-    [])
-
-    # Start backend with entered user data
-    #runBackend(droneList, coordList, o)bjectDict)
-    # Drone list, dest list, obstacle dictionary, dronelist for paths, path dictionary
-    """
-    runBackend([1,2,3,4,5,6],
-    [4,2],
-    [[[-4.0,-4.0,5.0],[4.0,-4.0,5.0],[4.0,4.0,5.0],[-4.0,4.0,5.0],[1.0,1.0,1.0]],[[2.0,-2.0,3.0],[-2.0,-2.0,3.0],[-2.0,2.0,3.0],[2.0,2.0,3.0],[1.0,1.0,1.0]]],
-    {'object_0': ((1.0, 2.0, 1.0), (3.0, 3.0, 3.0))},
-    {'loopout.py': [3,1,5,6]})
-    """
+    [True, True, True, 2.0, True, False, False, True])'''
 
 if __name__ == "__main__":
     main()
