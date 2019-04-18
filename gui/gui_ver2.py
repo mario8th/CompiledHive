@@ -194,8 +194,18 @@ class WidgetGallery(QtGui.QDialog):
 
 
     def addDroneClick(self):
-        self.droneWin = WidgetDrone()
-        self.droneWin.show()
+        file = open(self.fileNames, 'r+')
+        message = QMessageBox()
+        
+        for line in file:
+            if line == " ":
+                message.setText("Please upload a flight file")
+                message.setWindowTitle("Error Message")
+                message.setStandardButtons(QMessageBox.Ok)
+                retval = message.exec_()
+            else:
+                self.droneWin = WidgetDrone()
+                self.droneWin.show()
         return
         
     def removeDroneClick(self):
@@ -203,9 +213,13 @@ class WidgetGallery(QtGui.QDialog):
         tempList = []
         #delete from droneIDs dict
         del droneIDs[self.currentDrone]
+        print self.currentDrone
+        print droneIDs
+        print dronesConnected
         #delete from dronesConnected dict or 
         if self.currentDrone in dronesConnected:
             del dronesConnected[self.currentDrone]
+            print dronesConnected
         else:
              #find which key the drone is in
              for key, value in fpConnected.iteritems():
@@ -528,7 +542,6 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
         item = self.corModel.index(rowIndex, 0)
         self.currentCor =(item.data().toString())
         return
-
         
     #checks that drone as id and name
     #adds drone to main gui list and adds coordinate to drone if vaild
@@ -538,9 +551,12 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
         if self.droneName.text().remove(" ") != "":
             if self.droneID.text().remove(" ") != "":
                 if self.checkCor() == True:
+                    #removes coordinate from list view
                     item = QStandardItem(self.droneCor.text())
                     self.corModel.appendRow(item)
                     self.droneCorList.setModel(self.corModel)
+                    self.droneCor.clear()
+                    
             else:
                 message.setText("Please enter a ID for the drone")
                 message.setWindowTitle("Error Message")
@@ -603,13 +619,27 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
 
     def removeClick(self):
          self.corModel.clear()
-         tempList = []
-         for value in dronesConnected[str(self.droneName.text())]:
-             if value != self.currentCor:
-                 tempList.append(value)
-         dronesConnected[str(self.droneName.text())] = tempList
-         item = QStandardItem(self.droneCorList)
-         self.corModel.appendRow(item)
+         tempList = str(self.currentCor).split(",")
+         itemIndex = 0
+         index = 0
+         count = 0
+         for cor in dronesConnected[str(self.droneName.text())]:
+             for value in cor:
+                 if count == 2:
+                     itemIndex = index
+                     break
+                 if str(value) != str(tempList[count]):
+                     index += 1
+                     break
+                 else:
+                     count += 1
+             count = 0
+         del dronesConnected[str(self.droneName.text())][itemIndex]
+         strItems =""
+         for name in dronesConnected[str(self.droneName.text())]:
+             toAdd = str(name)[1:-1]
+             item = QStandardItem(toAdd)
+             self.corModel.appendRow(item)
          self.droneCorList.setModel(self.corModel)
          return
         
