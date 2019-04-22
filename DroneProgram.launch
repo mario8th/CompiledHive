@@ -1,0 +1,5 @@
+<launch>
+    <node name="backend" pkg="beginner_tutorials" type="backend2.py" />
+    <node name="listener" pkg="beginner_tutorials" type="simulator.py" />
+    <node name="monitornode" pkg="beginner_tutorials" type="visros.py" />
+</launch>
