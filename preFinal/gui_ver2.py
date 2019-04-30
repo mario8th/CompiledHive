@@ -1,4 +1,3 @@
-
 import sys
 import re
 import os
@@ -6,6 +5,14 @@ import os
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
+import datetime
+
+XMIN = -4.0
+XMAX = 4.0
+YMIN = -4.0
+YMAX = 4.0
+ZMIN = 0.0
+ZMAX = 8.0
 
 # List of all drones with coordinate flight paths
 dronesConnected = {}
@@ -15,13 +22,15 @@ droneIDs = {}
 fpConnected = {}
 # List of objects and coordinates
 objectDict = {}
+
+logFile = ""
 #==========================================================================================
 #                    Main Part of GUI
 #==========================================================================================
 class WidgetGallery(QtGui.QDialog):
     count = 0
     def getData(self):
-        global dronesConnected, droneIDs, fpConnected, objectDict
+        global dronesConnected, droneIDs, fpConnected, objectDict, logFile
         print fpConnected
         droneCount = 1.0
         # Starts initial drone at (1,1,0), adds .3 to x value for every additional drone
@@ -104,19 +113,27 @@ class WidgetGallery(QtGui.QDialog):
             logToggle.append(False)
         config.close()
         self.logInfo()
-        print (dronesConnected, droneIDs, fpConnected, objectDict, visToggle, logToggle)
-        return (dronesConnected, droneIDs, fpConnected, objectDict, visToggle, logToggle)
+        print (dronesConnected, droneIDs, fpConnected, objectDict, visToggle, logToggle, logFile)
+        return (dronesConnected, droneIDs, fpConnected, objectDict, visToggle, logToggle, logFile)
 
     def logInfo(self):
-        log = open("LogData.txt", 'w')
+        global dronesConnected, droneIDs, fpConnected, objectDict, logFile
+        now = datetime.datetime.now()
+        logFile = "logData_" + str(now.year) + "-" + str(now.month) + '-' + str(now.day) + '_' + str(now.hour) + ':' + str(now.minute) + '.txt'
+
         config = open("log_config.txt", 'r')
         # Checks if log is on
         line = config.readline().strip()
         if line == "on":
+            log = open(logFile, 'w')
+            log.write("Logging Data from flight on " + str(now.year) + "-" + str(now.month) + '-' + str(now.day) + ' ' + str(now.hour) + ':' + str(now.minute) + '\n')
             # Checks if requested to save drones
             line = config.readline().strip()
             if line == "on":
                 log.write("Drones Connected:\n")
+                for fp in fpConnected:
+                    for drone in fpConnected[fp]:
+                        log.write(drone + ' ')
                 for drone in dronesConnected:
                     log.write(drone + ' ')
                 log.write('\n\n')
@@ -147,8 +164,10 @@ class WidgetGallery(QtGui.QDialog):
             line = config.readline().strip()
             if line == 'on':
                 log.write("Drones and connected coordinates:\n")
-                log.write(str(droneCoords))
-                log.write('\n')
+                for drone in dronesConnected:
+                    log.write(drone + ': ' + str(dronesConnected[drone]) + '\n')
+                log.write('\nCoordinates and Events:\n')
+
             # Checks if requested to save events
             line = config.readline().strip()
 
@@ -189,7 +208,7 @@ class WidgetGallery(QtGui.QDialog):
         self.flightList = QtGui.QListView()
         self.flightList.clicked.connect(self.lastFlightclicked)
         self.model = QStandardItemModel(self.flightList)
-        
+
         uploadButton = QtGui.QPushButton("Upload")
         uploadButton.clicked.connect(self.uploadClick)
         removeButton = QtGui.QPushButton("Remove")
@@ -201,12 +220,12 @@ class WidgetGallery(QtGui.QDialog):
         layout.addWidget(removeButton)
         layout.addStretch(1)
         self.topLeftGroupBox.setLayout(layout)
-        
+
     def lastFlightclicked(self):
         rowIndex = self.flightList.currentIndex().row()
         item = self.model.index(rowIndex, 0)
         self.currentFlight =(item.data().toString())
-        
+
     def uploadClick(self):
       message = QMessageBox()
       self.currentFile = QtGui.QFileDialog.getOpenFileName(self, 'Open File')
@@ -241,7 +260,7 @@ class WidgetGallery(QtGui.QDialog):
           message.setStandardButtons(QMessageBox.Ok)
           retval = message.exec_()
       return
-    
+
     def getFileName(self, myFile):
         temp = myFile
         if temp.contains("/") == True:
@@ -264,11 +283,11 @@ class WidgetGallery(QtGui.QDialog):
 
     def createFile(self, myFile):
         with open(self.currentFile) as fileIn:
-            with open(myFile + ".py", "w") as fileOut:
+            with open("src/beginner_tutorials/scripts/"+myFile + ".py", "w") as fileOut:
                 for line in fileIn:
                    fileOut.write(line)
         return
-    
+
     def removeClick(self):
       self.model.clear()
       file = open(self.fileNames, 'r+')
@@ -293,13 +312,13 @@ class WidgetGallery(QtGui.QDialog):
       return
 
 #-----------------main drone box------------------------------------------
-    
+
     def createTopRightGroupBox(self):
         self.topRightGroupBox = QtGui.QGroupBox("Drones")
         self.droneList = QtGui.QListView()
         self.droneList.clicked.connect(self.lastDroneclicked)
         self.model2 = QStandardItemModel(self.droneList)
-        
+
         uploadButton = QtGui.QPushButton("Add")
         uploadButton.clicked.connect(self.addDroneClick)
         removeButton = QtGui.QPushButton("Remove")
@@ -311,7 +330,7 @@ class WidgetGallery(QtGui.QDialog):
         layout.addWidget(removeButton)
         layout.addStretch(1)
         self.topRightGroupBox.setLayout(layout)
-        
+
     def lastDroneclicked(self):
         rowIndex = self.droneList.currentIndex().row()
         item = self.model2.index(rowIndex, 0)
@@ -322,7 +341,7 @@ class WidgetGallery(QtGui.QDialog):
         self.droneWin = WidgetDrone()
         self.droneWin.show()
         return
-        
+
     def removeDroneClick(self):
         self.model2.clear()
         tempList = []
@@ -350,7 +369,7 @@ class WidgetGallery(QtGui.QDialog):
         self.obsList = QtGui.QListView()
         self.obsList.clicked.connect(self.lastObsclicked)
         self.model3 = QStandardItemModel(self.obsList)
-        
+
         uploadButton = QtGui.QPushButton("Add")
         uploadButton.clicked.connect(self.addObstaclesClick)
         removeButton = QtGui.QPushButton("Remove")
@@ -361,7 +380,7 @@ class WidgetGallery(QtGui.QDialog):
         layout.addWidget(uploadButton)
         layout.addWidget(removeButton)
         self.bottomLeftGroupBox.setLayout(layout)
-        
+
     def lastObsclicked(self):
         rowIndex = self.obsList.currentIndex().row()
         item = self.model3.index(rowIndex, 0)
@@ -375,20 +394,20 @@ class WidgetGallery(QtGui.QDialog):
             self.model3.appendRow(item)
         self.obsList.setModel(self.model3)
         return
-        
+
     def addObstaclesClick(self):
         self.obsWin = WidgetObs(self)
         self.obsWin.show()
         return
 #-------------------main buttons box------------------------------------------
-    
+
     def createBottomRightGroupBox(self):
         self.bottomRightGroupBox = QtGui.QGroupBox()
         ToggleVisButton = QtGui.QPushButton("Open Visualzation")
         ToggleVisButton.clicked.connect(self.openVis)
         ToggleLogButton = QtGui.QPushButton("Open Log File")
         ToggleLogButton.clicked.connect(self.openLog)
-        
+
         startButton = QtGui.QPushButton("Start Flight")
         startButton.clicked.connect(self.startFlight)
 
@@ -397,7 +416,7 @@ class WidgetGallery(QtGui.QDialog):
         layout.addWidget(ToggleLogButton)
         layout.addWidget(startButton)
         self.bottomRightGroupBox.setLayout(layout)
-        
+
     def startFlight(self):
         print dronesConnected
         print droneIDs
@@ -412,7 +431,7 @@ class WidgetGallery(QtGui.QDialog):
         self.visWin = toggle_vis_window()
         self.visWin.show()
         return
-        
+
     def openLog(self):
         self.logWin = toggle_log_window()
         self.logWin.show()
@@ -438,12 +457,12 @@ class WidgetObs(WidgetGallery, QtGui.QDialog):
         mainLayout = QtGui.QHBoxLayout()
         mainLayout.addWidget(self.obsInfoBox)
         self.setLayout(mainLayout)
-        
+
      def createObsInfoBox(self):
         self.obsInfoBox = QtGui.QGroupBox("Obstacle Informations")
         obsNameLabel = QtGui.QLabel("Enter a obstacle name:")
         self.obsName = QLineEdit()
-        
+
         obsCorLabel1 = QtGui.QLabel("Enter a obstacle coordinates 1 (format: x,y,z):")
         self.obsCor1 =  QLineEdit()
         obsCorLabel2 = QtGui.QLabel("Enter a obstacle coordinates 2 (format: x,y,z):")
@@ -466,11 +485,11 @@ class WidgetObs(WidgetGallery, QtGui.QDialog):
         layout.addWidget(addButton)
         layout.addWidget(cancelButton)
         self.obsInfoBox.setLayout(layout)
-        
+
      def cancelClick(self):
          self.close()
          return
-         
+
      def addClick(self):
         global start
         message = QMessageBox()
@@ -497,12 +516,12 @@ class WidgetObs(WidgetGallery, QtGui.QDialog):
             message.setStandardButtons(QMessageBox.Ok)
             retval = message.exec_()
             return
-        x1Bool = x1Coord >= -4 and x1Coord <= 4
-        y1Bool = y1Coord >= -4 and y1Coord <= 4
-        z1Bool = z1Coord >= 0 and z1Coord <= 8
-        x2Bool = x2Coord >= -4 and x2Coord <= 4
-        y2Bool = y2Coord >= -4 and y2Coord <= 4
-        z2Bool = z2Coord >= 0 and z2Coord <= 8
+        x1Bool = x1Coord >= XMIN and x1Coord <= XMAX
+        y1Bool = y1Coord >= YMIN and y1Coord <= YMAX
+        z1Bool = z1Coord >= ZMIN and z1Coord <= ZMAX
+        x2Bool = x2Coord >= XMIN and x2Coord <= XMAX
+        y2Bool = y2Coord >= YMIN and y2Coord <= YMAX
+        z2Bool = z2Coord >= ZMIN and z2Coord <= ZMAX
         if x1Bool and x2Bool and y1Bool and y2Bool and z1Bool and z2Bool:
             objectDict.update({name : [[x1Coord , y1Coord ,z1Coord],[x2Coord , y2Coord ,z2Coord ]]})
             item = QStandardItem(name)
@@ -528,7 +547,7 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
         self.originalPalette = QtGui.QApplication.palette()
         #self.flightList = WidgetGallery.self.flightList
         self.setWindowTitle("Drone Setup")
-        
+
         styleComboBox = QtGui.QComboBox()
         styleComboBox.addItems(QtGui.QStyleFactory.keys())
 
@@ -541,14 +560,14 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
         mainLayout.addWidget(self.coordinatesBox)
         mainLayout.addWidget(self.fileBox)
         self.setLayout(mainLayout)
-        
+
 #----------------------drone main information box---------------------
 
     def createDroneInfoBox(self):
         self.droneInfoBox = QtGui.QGroupBox("Drones Informations")
         droneNameLabel = QtGui.QLabel("Enter a drone name:")
         self.droneName = QLineEdit()
-        
+
         droneIDLabel = QtGui.QLabel("Enter a drone id:")
         self.droneID =  QLineEdit()
         droneChoiceLabel = QtGui.QLabel("File or coordinates:")
@@ -567,7 +586,7 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
         layout.addWidget(droneChoiceLabel)
         layout.addWidget(self.choiceComboBox)
         self.droneInfoBox.setLayout(layout)
-        
+
     def disableBox(self):
         if self.choiceComboBox.currentText() == "Flight File":
             self.fileBox.setDisabled(False)
@@ -579,9 +598,9 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
             self.fileBox.setDisabled(True)
             self.coordinatesBox.setDisabled(False)
         return
-    
-    
-#----------------------drone select file box--------------------------       
+
+
+#----------------------drone select file box--------------------------
     def createFileBox(self):
         self.fileBox = QtGui.QGroupBox("Fight Path File")
         fileNameLabel = QtGui.QLabel("Select a flight path file:")
@@ -592,19 +611,19 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
             for name in temp:
                 if name != "":
                     self.fileComboBox.addItem(name)
-                
+
         fileButton = QtGui.QPushButton("Done")
-        fileButton.clicked.connect(self.fileClick)        
+        fileButton.clicked.connect(self.fileClick)
         cancelButton = QtGui.QPushButton("Cancel")
         cancelButton.clicked.connect(self.cancelClick)
-            
+
         layout = QtGui.QGridLayout()
 
         layout.addWidget(self.fileComboBox)
         layout.addWidget(fileButton)
         layout.addWidget(cancelButton)
         self.fileBox.setLayout(layout)
-        
+
     def fileClick(self):
         global start
         droneIDs[str(self.droneName.text())] = str(self.droneID.text())
@@ -622,9 +641,9 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
     def cancelClick(self):
          self.close()
          return
-        
+
 #----------------------drone coordinates box--------------------------
-        
+
     def createCoordinatesBox(self):
         self.coordinatesBox = QtGui.QGroupBox("Drone Coordinates")
         self.droneCorList = QtGui.QListView()
@@ -639,7 +658,7 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
         removeButton.clicked.connect(self.removeClick)
         closeButton = QtGui.QPushButton("Done")
         closeButton.clicked.connect(self.cancelClick)
-        
+
         layout = QtGui.QGridLayout()
         layout.addWidget(self.droneCorList)
         layout.addWidget(droneCorLabel)
@@ -647,15 +666,15 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
         layout.addWidget(corButton)
         layout.addWidget(removeButton)
         layout.addWidget(closeButton)
-        
+
         self.coordinatesBox.setLayout(layout)
-        
+
     def lastCorClicked(self):
         rowIndex = self.droneCorList.currentIndex().row()
         item = self.corModel.index(rowIndex, 0)
         self.currentCor =(item.data().toString())
         return
-        
+
     #checks that drone as id and name
     #adds drone to main gui list and adds coordinate to drone if vaild
     def corClick(self):
@@ -669,7 +688,7 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
                     self.corModel.appendRow(item)
                     self.droneCorList.setModel(self.corModel)
                     self.droneCor.clear()
-                    
+
             else:
                 message.setText("Please enter a ID for the drone")
                 message.setWindowTitle("Error Message")
@@ -682,7 +701,7 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
             retval = message.exec_()
         return
 
-    
+
     #checks if coordinates are correctly formated and in range
     def checkCor(self):
         global start
@@ -706,9 +725,9 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
             message.setStandardButtons(QMessageBox.Ok)
             retval = message.exec_()
             return False
-        x1Bool = x1Coord >= -4 and x1Coord <= 4
-        y1Bool = y1Coord >= -4 and y1Coord <= 4
-        z1Bool = z1Coord >= 0 and z1Coord <= 8
+        x1Bool = x1Coord >= XMIN and x1Coord <= XMAX
+        y1Bool = y1Coord >= YMIN and y1Coord <= YMAX
+        z1Bool = z1Coord >= ZMIN and z1Coord <= ZMAX
         if x1Bool and y1Bool and z1Bool:
             #WidgetGallery update
             droneName = str(self.droneName.text())
@@ -721,7 +740,7 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
                 # Apply the model to the list view
                 start.droneList.setModel(start.model2)
             dronesConnected[droneName].append([x1Coord, y1Coord, z1Coord])
-                  
+
         else:
             message.setText("Drone coordinates out of range.")
             message.setWindowTitle("Error Message")
@@ -755,11 +774,11 @@ class WidgetDrone(WidgetGallery, QtGui.QDialog):
              self.corModel.appendRow(item)
          self.droneCorList.setModel(self.corModel)
          return
-        
+
 #==========================================================================================
 #                    Visualzation window
 #==========================================================================================
-        
+
 class toggle_vis_window(QtGui.QMainWindow):
    def __init__(self, parent=None):
       super(toggle_vis_window, self).__init__(parent)

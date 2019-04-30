@@ -19,6 +19,9 @@ consolePub =        rospy.Publisher('backtomonitorconsole', String, queue_size=1
 destPub =           rospy.Publisher('backtosim', String, queue_size=10)
 visPubObstacle =    rospy.Publisher('backtomonitorobstacles', String, queue_size=10)
 visPubSensor =      rospy.Publisher('backtomonitorsensors', String, queue_size=10)
+visPubConfig =      rospy.Publisher('backtomonitorconfig', String, queue_size=10)
+
+logFile = ""
 
 class BackendData:
     def __init__(self, fullDroneList, destDict, pathDict, obstDict, visConfig, logConfig):
@@ -192,6 +195,7 @@ class BackendData:
 
 
     def toLog(self, commandLetter, logString):
+        global logFile
         # Take in command + string
         # Test command against Config
         # if logging that command, log
@@ -201,12 +205,13 @@ class BackendData:
         # Test if logging
         if(self.logConfig[0]):
             # Open File to log
-            log = open("LogData.txt", 'w')
+            log = open(logFile, 'a')
             # Test for events and logging config for events
             if(commandLetter == 'E' and self.logConfig[7]):
-                log.write(logString)
+                log.write(logString + "\n")
+                consolePub.publish(logString)
             elif(commandLetter == 'L' and self.logConfig[2]):
-                log.write(logString)
+                log.write(logString + "\n")
 
             log.close()
 
@@ -265,7 +270,7 @@ def calcDistance(point1, point2):
 
 def runBackend(fullDroneList, destDict, pathDict, obstDict, visConfig, logConfig):
     # Get global publishers
-    global backend, visualizationPub, destPub, consolePub, visPubObstacle, visPubSensor
+    global backend, visualizationPub, destPub, consolePub, visPubObstacle, visPubSensor, visPubConfig
 
     # Initialize backend data
     backend = BackendData(fullDroneList, destDict, pathDict, obstDict, visConfig, logConfig)
@@ -292,6 +297,12 @@ def runBackend(fullDroneList, destDict, pathDict, obstDict, visConfig, logConfig
     destPub.publish(str(backend.currentDests))
     destPub.publish(str(backend.currentDests))
 
+    visPubConfig.publish(str(visConfig))
+    visPubConfig.publish(str(visConfig))
+    time.sleep(0.1)
+    visPubConfig.publish(str(visConfig))
+    visPubConfig.publish(str(visConfig))
+
     rospy.Subscriber('simtoback', String, receivedLocations)
     rospy.Subscriber('monitortoback', String, receivedEStop)
 
@@ -301,9 +312,12 @@ def runBackend(fullDroneList, destDict, pathDict, obstDict, visConfig, logConfig
 
 
 def main():
+    global logFile
     # Launch GUI to gather user input
     flightData = launchGui()
     print flightData
+
+    logFile = flightData[6]
 
     # Parse user input
     fullDroneList = []
@@ -320,7 +334,7 @@ def main():
     { 2:[[2.0,-2.0,0.0],[2.0,-2.0,3.0],[-2.0,-2.0,3.0],[-2.0,2.0,3.0],[2.0,2.0,3.0],[1.0,1.0,1.0]],1:[[-4.0,-4.0,0.0],[-4.0,-4.0,5.0],[4.0,-4.0,5.0],[4.0,4.0,5.0],[-4.0,4.0,5.0],[1.0,1.0,1.0]]},
     {"loopout": [3,4]},
     {'object_0': ((1.0, 2.0, 1.0), (3.0, 3.0, 3.0))},
-    [],
+    [True, 1,1,1,1,1],
     [True, True, True, 2.0, True, False, False, True])'''
 
 if __name__ == "__main__":
