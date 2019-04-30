@@ -26,9 +26,10 @@ REFRESH_WAIT = 1.0/REFRESH_RATE
 newValues = []
 obstacles = [[[1,1,1],[4,4,8]]]
 sensors = [[-4, -4, 4, 4, -4, -4, 4, 4], [4, -4, 4, -4, 4, -4, 4, -4], [0, 0, 0, 0, 8, 8, 8, 8]]
+configList = [True, True,1,1,1,1]
 
 class VisualizationData:
-    def __init__(self, configList):
+    def __init__(self):
         global obstacles
         global sensors
         # Class Variables
@@ -54,12 +55,10 @@ class VisualizationData:
             shapeX = [sh[0][0],sh[0][0],sh[0][0],sh[0][0],sh[0][0]]
             shapeY = [sh[0][1],sh[0][1],sh[1][1],sh[1][1],sh[0][1]]
             shapeZ = [sh[1][2],sh[0][2],sh[0][2],sh[1][2],sh[1][2]]
-
             # Loop opposite face, at each point jump to matching point on previous face
             shapeX.extend([sh[1][0],sh[1][0],sh[0][0],sh[1][0],sh[1][0],sh[0][0],sh[1][0],sh[1][0] ,sh[0][0],sh[1][0],sh[1][0]])
             shapeY.extend([sh[0][1],sh[1][1],sh[1][1],sh[1][1],sh[1][1],sh[1][1],sh[1][1],sh[0][1] ,sh[0][1],sh[0][1],sh[0][1]])
             shapeZ.extend([sh[1][2],sh[1][2],sh[1][2],sh[1][2],sh[0][2],sh[0][2],sh[0][2],sh[0][2] ,sh[0][2],sh[0][2],sh[1][2]])
-
             self.obstacleX.append(shapeX)
             self.obstacleY.append(shapeY)
             self.obstacleZ.append(shapeZ)
@@ -109,13 +108,15 @@ class VisualizationData:
             self.obstacleZ.append(shapeZ)
 
 
-    def updatePlot(self, axis, configList):
+    def updatePlot(self, axis):
+        global configList
 
         # Update obstacle positions
         self.updateObstacles()
 
         plt.cla()
-
+        if(not configList[0]):
+            return
         # Plot Drone locations
         if(configList[1]):
             for droneCount, drone in enumerate(self.allX):
@@ -169,13 +170,13 @@ def callback(data):
     global newValues
     newValues = ast.literal_eval(data.data)
 
-def updateVis(vd, axis, configList):
+def updateVis(vd, axis):
     # Get most recent location and store in local then update
     global newValues
     localNewVal = newValues
     print localNewVal
     vd.updateLocations(localNewVal)
-    vd.updatePlot(axis, configList)
+    vd.updatePlot(axis)
     plt.pause(REFRESH_WAIT)
 
 def obstacleReceive(data):
@@ -187,9 +188,12 @@ def sensorReceive(data):
     global sensors
     sensors = ast.literal_eval(data.data)
 
+def configReceive(data):
+    global configList
+    print "COP: " + data.data
+    configList = ast.literal_eval(data.data)
+    #print configList
 def main():
-
-    configList = [1,1,1,1,1,1]
 
     """
     vd = VisualizationData([[[1,4,0],[3,2,2]], [[4,0,5],[0,1,7]]],
@@ -204,7 +208,7 @@ def main():
             [0, 0, 0, 0, 8, 8, 8, 8]], configList)
     """
 
-    vd = VisualizationData(configList)
+    vd = VisualizationData()
 
     # Set up plotting stuff
     fig = plt.figure()
@@ -216,11 +220,12 @@ def main():
     rospy.Subscriber('backtomonitorvis', String, callback)
     rospy.Subscriber('backtomonitorobstacles', String, obstacleReceive)
     rospy.Subscriber('backtomonitorsensors', String, sensorReceive)
+    rospy.Subscriber('backtomonitorconfig', String, configReceive)
 
     rate = rospy.Rate(REFRESH_RATE)
     while (not rospy.is_shutdown()):
         #Fetch most recent newValues and update plot with them
-        updateVis(vd, ax, configList)
+        updateVis(vd, ax)
 
         rate.sleep()
 
